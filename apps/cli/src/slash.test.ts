@@ -13,6 +13,10 @@ describe('parseSlash', () => {
     expect(parseSlash('/q')).toEqual({ kind: 'quit' })
     expect(parseSlash('/approve')).toEqual({ kind: 'unknown', text: '/approve' })
     expect(parseSlash('/nope')).toEqual({ kind: 'unknown', text: '/nope' })
+    expect(parseSlash('/model xai/grok-4.3')).toEqual({ kind: 'model', spec: 'xai/grok-4.3' })
+    expect(parseSlash('/model')).toEqual({ kind: 'model' })
+    expect(parseSlash('/skill docx')).toEqual({ kind: 'skill', name: 'docx' })
+    expect(parseSlash('/cron')).toEqual({ kind: 'routines' })
   })
 })
 

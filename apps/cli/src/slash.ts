@@ -5,6 +5,15 @@ export type SlashCommand =
   | { kind: 'approve'; id: string }
   | { kind: 'deny'; id: string }
   | { kind: 'status' }
+  | { kind: 'model'; spec?: string }
+  | { kind: 'skills' }
+  | { kind: 'skill'; name: string }
+  | { kind: 'tools' }
+  | { kind: 'wallet' }
+  | { kind: 'memory' }
+  | { kind: 'usage' }
+  | { kind: 'routines' }
+  | { kind: 'retry' }
   | { kind: 'help' }
   | { kind: 'quit' }
   | { kind: 'unknown'; text: string }
@@ -28,6 +37,25 @@ export function parseSlash(line: string): SlashCommand {
       return arg ? { kind: 'deny', id: arg } : { kind: 'unknown', text }
     case 'status':
       return { kind: 'status' }
+    case 'model':
+      return arg ? { kind: 'model', spec: arg } : { kind: 'model' }
+    case 'skills':
+      return { kind: 'skills' }
+    case 'skill':
+      return arg ? { kind: 'skill', name: arg } : { kind: 'unknown', text }
+    case 'tools':
+      return { kind: 'tools' }
+    case 'wallet':
+      return { kind: 'wallet' }
+    case 'memory':
+      return { kind: 'memory' }
+    case 'usage':
+      return { kind: 'usage' }
+    case 'routines':
+    case 'cron':
+      return { kind: 'routines' }
+    case 'retry':
+      return { kind: 'retry' }
     case 'help':
     case '?':
       return { kind: 'help' }
@@ -53,9 +81,22 @@ export function matchApprovalId<T extends { id: string }>(
 
 export const SLASH_COMMANDS: { name: string; arg?: string; help: string }[] = [
   { name: '/new', help: 'start a fresh conversation (long-term memory is kept)' },
+  { name: '/retry', help: 'send the last message again' },
   { name: '/approvals', help: 'list pending approvals' },
   { name: '/approve', arg: '<id>', help: 'approve a pending action (id or 8-char prefix)' },
   { name: '/deny', arg: '<id>', help: 'deny a pending action' },
+  {
+    name: '/model',
+    arg: '[provider/model]',
+    help: 'show the chat model, or switch it (saved to .env; restart to apply)',
+  },
+  { name: '/usage', help: 'tokens used by the last reply and USDC spent today' },
+  { name: '/wallet', help: 'XDC AI wallet: address, balances, caps, spend' },
+  { name: '/skills', help: 'list bundled and custom skills' },
+  { name: '/skill', arg: '<name>', help: 'read one skill' },
+  { name: '/tools', help: 'tools the agent can call right now' },
+  { name: '/memory', help: 'show MEMORY.md (what the agent chose to remember)' },
+  { name: '/routines', help: 'scheduled routines (cron) and recent runs' },
   { name: '/status', help: 'model, wallet, workspace, skills, spend' },
   { name: '/help', help: 'this list' },
   { name: '/quit', help: 'leave the chat' },
