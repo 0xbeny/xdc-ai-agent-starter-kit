@@ -9,6 +9,8 @@ import pc from 'picocolors'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { spawn } from 'node:child_process'
+
 import { openDashboard } from './dashboard.ts'
 import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
 
@@ -28,6 +30,16 @@ async function loadAgent() {
     import('../../agent/src/mastra/kit.ts'),
   ])
   return { mastra, agent: mastra.getAgent('assistant'), kit: getKit() }
+}
+
+async function gitHead(root: string): Promise<string> {
+  return new Promise((resolve) => {
+    const child = spawn('git', ['rev-parse', 'HEAD'], { cwd: root })
+    let out = ''
+    child.stdout.on('data', (d: Buffer) => (out += d.toString()))
+    child.on('exit', () => resolve(out.trim()))
+    child.on('error', () => resolve(''))
+  })
 }
 
 const usdc = (micro: bigint | number): string => `${Number(micro) / 1_000_000} USDC`
@@ -356,6 +368,33 @@ export async function runChat(): Promise<void> {
     }
     if (cmd.kind === 'dashboard') {
       await openDashboard(root)
+      continue
+    }
+    if (cmd.kind === 'update') {
+      const before = await gitHead(root)
+      rl.pause()
+      const code = await new Promise<number>((resolve) => {
+        const child = spawn('bash', [join(root, 'scripts', 'update.sh'), '--no-restart'], {
+          cwd: root,
+          stdio: 'inherit',
+        })
+        child.on('exit', (c) => resolve(c ?? 1))
+      })
+      rl.resume()
+      const after = await gitHead(root)
+      if (code !== 0) console.log(pc.red('  update did not complete — see the messages above'))
+      else if (before === after) console.log(pc.dim('  already up to date'))
+      else {
+        console.log(pc.green(`  updated ${before.slice(0, 7)} → ${after.slice(0, 7)}`))
+        console.log(
+          pc.yellow(
+            '  this chat is still running the old code: /quit, then start xdc-agent again',
+          ) +
+            pc.dim(
+              ' (the login service restarts itself: xdc-agent update does that outside the chat)',
+            ),
+        )
+      }
       continue
     }
     if (cmd.kind === 'retry') {

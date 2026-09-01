@@ -18,6 +18,7 @@ describe('parseSlash', () => {
     expect(parseSlash('/skill docx')).toEqual({ kind: 'skill', name: 'docx' })
     expect(parseSlash('/cron')).toEqual({ kind: 'routines' })
     expect(parseSlash('/ui')).toEqual({ kind: 'dashboard' })
+    expect(parseSlash('/upgrade')).toEqual({ kind: 'update' })
   })
 })
 
