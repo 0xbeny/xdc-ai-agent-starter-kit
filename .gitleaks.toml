@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated build output (never committed) trips generic-api-key on bundled third-party code"
+paths = ['''(^|/)\.next/''', '''(^|/)\.mastra/''', '''(^|/)dist/''', '''(^|/)node_modules/''']
+# Test fixtures that look like credentials but are not (see packages/secrets/src/resolve.test.ts)
+regexes = ['''sk-live-1234567890''', '''hunter2hunter2''']

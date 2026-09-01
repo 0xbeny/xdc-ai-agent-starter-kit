@@ -1,0 +1,21 @@
+{
+  "name": "@xdc-ai/workspace",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@mastra/core": "1.63.2",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@xdc-ai/config": "workspace:*"
+  }
+}

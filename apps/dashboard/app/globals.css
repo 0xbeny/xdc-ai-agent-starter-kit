@@ -1,0 +1,147 @@
+@import 'tailwindcss';
+@import '@copilotkit/react-ui/styles.css';
+
+@theme {
+  --color-bg: #f5f8f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #edf3f2;
+  --color-ink: #15201e;
+  --color-ink-2: #3c4a48;
+  --color-muted: #5d6d6b;
+  --color-line: #d6e0de;
+  --color-accent: #0e7c7b;
+  --color-accent-ink: #0b6160;
+  --color-tint: #d9edec;
+  --color-warn: #a8681a;
+  --color-warn-bg: #f7ecdb;
+  --color-bad: #b2394a;
+  --color-bad-bg: #f8e3e6;
+  --color-good: #2e7d4f;
+  --color-good-bg: #dff1e6;
+  --font-sans: 'IBM Plex Sans', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f1514;
+    --color-surface: #161e1d;
+    --color-surface-2: #1d2725;
+    --color-ink: #e5edeb;
+    --color-ink-2: #c2cecb;
+    --color-muted: #8fa09d;
+    --color-line: #2a3634;
+    --color-accent: #4fb8b3;
+    --color-accent-ink: #7cd0cb;
+    --color-tint: #173230;
+    --color-warn: #e0a75a;
+    --color-warn-bg: #2c2416;
+    --color-bad: #e27a88;
+    --color-bad-bg: #2e1a1e;
+    --color-good: #6cc493;
+    --color-good-bg: #16291f;
+  }
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  padding: 16px 18px;
+}
+.input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--color-ink);
+  width: 100%;
+}
+.input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.btn-primary {
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.btn-primary:hover {
+  background: var(--color-accent-ink);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+}
+.btn {
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  border-radius: 4px;
+  padding: 7px 12px;
+  font-size: 14px;
+}
+.btn:hover {
+  background: var(--color-surface-2);
+}
+.pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.pill-ok {
+  background: var(--color-good-bg);
+  color: var(--color-good);
+}
+.pill-warn {
+  background: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+.pill-bad {
+  background: var(--color-bad-bg);
+  color: var(--color-bad);
+}
+.pill-muted {
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  border-color: var(--color-line);
+}
+.pill-accent {
+  background: var(--color-tint);
+  color: var(--color-accent-ink);
+  border-color: var(--color-accent);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.copilotKitChat,
+.copilotKitWindow {
+  --copilot-kit-primary-color: var(--color-accent);
+  --copilot-kit-background-color: var(--color-surface);
+  --copilot-kit-secondary-color: var(--color-surface-2);
+  --copilot-kit-secondary-contrast-color: var(--color-ink);
+  --copilot-kit-separator-color: var(--color-line);
+  --copilot-kit-muted-color: var(--color-muted);
+}

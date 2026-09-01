@@ -1,0 +1,83 @@
+# Production: agent + dashboard + Postgres + Redis. Usage:
+#   cp .env.example .env && edit; docker compose -f deploy/compose/docker-compose.prod.yml --env-file .env up -d --build
+name: xdc-ai-agent-prod
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-agent}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-agent} -d ${POSTGRES_DB:-agent}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes: [redis-data:/data]
+
+  agent:
+    build: { context: ../.., dockerfile: deploy/docker/agent.Dockerfile }
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    env_file: [../../.env]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-agent}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-agent}
+      REDIS_URL: redis://redis:6379
+      AGENT_WORKSPACE: /agent/workspace
+      AGENT_DATA_DIR: /agent/data
+      AGENT_URL: ${AGENT_URL:-http://agent:4111}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:3000}
+      MASTRA_TELEMETRY_DISABLED: '1'
+      COPILOTKIT_TELEMETRY_DISABLED: 'true'
+    volumes:
+      - ../../workspace:/agent/workspace
+      - agent-data:/agent/data
+    ports: ['${AGENT_PORT:-4111}:4111']
+
+  gateway:
+    build: { context: ../.., dockerfile: deploy/docker/agent.Dockerfile }
+    restart: unless-stopped
+    profiles: [telegram]
+    depends_on: [agent]
+    env_file: [../../.env]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-agent}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-agent}
+      AGENT_WORKSPACE: /agent/workspace
+      AGENT_DATA_DIR: /agent/data
+      MASTRA_TELEMETRY_DISABLED: '1'
+    volumes:
+      - ../../workspace:/agent/workspace
+      - agent-data:/agent/data
+    command: ['node', 'src/gateway.ts']
+
+  dashboard:
+    build: { context: ../.., dockerfile: deploy/docker/dashboard.Dockerfile }
+    restart: unless-stopped
+    depends_on: [agent]
+    environment:
+      AGENT_URL: http://agent:4111
+      KIT_API_TOKEN: ${KIT_API_TOKEN:?set KIT_API_TOKEN}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?set DASHBOARD_PASSWORD}
+    ports: ['${DASHBOARD_PORT:-3000}:3000']
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    profiles: [ollama]
+    volumes: [ollama-data:/root/.ollama]
+    ports: ['11434:11434']
+
+volumes:
+  postgres-data:
+  redis-data:
+  agent-data:
+  ollama-data:

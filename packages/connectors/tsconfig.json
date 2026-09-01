@@ -1,0 +1,4 @@
+{
+  "extends": "@xdc-ai/config/tsconfig.base.json",
+  "include": ["src"]
+}

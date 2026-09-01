@@ -1,0 +1,24 @@
+{
+  "name": "@xdc-ai/connectors",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@mastra/core": "1.63.2",
+    "@mastra/mcp": "1.17.2",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@xdc-ai/xdcai": "workspace:*",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@xdc-ai/config": "workspace:*"
+  }
+}

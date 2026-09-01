@@ -1,0 +1,29 @@
+{
+  "name": "@xdc-ai/cli",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "xdc-agent": "./src/bin.ts"
+  },
+  "scripts": {
+    "setup": "tsx src/bin.ts setup",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "login": "tsx src/bin.ts login"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.7.0",
+    "@mastra/core": "1.63.2",
+    "@xdc-ai/models": "workspace:*",
+    "@xdc-ai/workspace": "workspace:*",
+    "@xdc-ai/xdcai": "workspace:*",
+    "picocolors": "1.1.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@xdc-ai/config": "workspace:*",
+    "tsx": "4.23.13"
+  }
+}

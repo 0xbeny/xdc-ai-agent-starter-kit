@@ -13,7 +13,9 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version-file: .node-version, cache: pnpm }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap
       - run: pnpm install --frozen-lockfile
+      - run: pnpm check:ignored
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck

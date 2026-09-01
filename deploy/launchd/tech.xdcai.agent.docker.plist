@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Alternative for Macs that do run Docker Desktop: the production compose stack at login. -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>tech.xdcai.agent.docker</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/local/bin/docker</string><string>compose</string>
+    <string>-f</string><string>__REPO__/deploy/compose/docker-compose.prod.yml</string>
+    <string>--env-file</string><string>__REPO__/.env</string><string>up</string>
+  </array>
+  <key>WorkingDirectory</key><string>__REPO__</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>__REPO__/data/launchd.out.log</string>
+  <key>StandardErrorPath</key><string>__REPO__/data/launchd.err.log</string>
+</dict></plist>

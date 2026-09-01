@@ -1,4 +1,7 @@
 node_modules
 dist
 .mastra
+.next
+next-env.d.ts
 pnpm-lock.yaml
+templates/workspace/skills

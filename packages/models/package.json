@@ -13,5 +13,12 @@
   },
   "devDependencies": {
     "@xdc-ai/config": "workspace:*"
+  },
+  "optionalDependencies": {
+    "ai-sdk-provider-claude-code": "4.2.0",
+    "ai-sdk-provider-codex-cli": "2.1.2"
+  },
+  "dependencies": {
+    "@mastra/core": "1.63.2"
   }
 }
