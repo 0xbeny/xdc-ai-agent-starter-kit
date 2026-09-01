@@ -96,3 +96,29 @@ export function openBrowser(url: string): void {
 export function say(line: string): void {
   console.log(`${pc.cyan('▸')} ${line}`)
 }
+
+/** launchd's view of the job: running pid, or the last exit status when it died. */
+export function launchdState(): { running: boolean; pid?: number; lastExit?: number } | undefined {
+  if (process.platform !== 'darwin') return undefined
+  try {
+    const out = execSync(`launchctl print gui/${process.getuid?.() ?? 501}/${LAUNCHD_LABEL}`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    const pid = /\bpid = (\d+)/.exec(out)?.[1]
+    const lastExit = /last exit code = (-?\d+)/.exec(out)?.[1]
+    return {
+      running: /state = running/.test(out),
+      ...(pid ? { pid: Number(pid) } : {}),
+      ...(lastExit ? { lastExit: Number(lastExit) } : {}),
+    }
+  } catch {
+    return undefined
+  }
+}
+
+export function readErrTail(root: string, lines = 12): string {
+  const p = join(root, 'data', 'service.err.log')
+  if (!existsSync(p)) return ''
+  return readFileSync(p, 'utf8').split('\n').filter(Boolean).slice(-lines).join('\n')
+}
