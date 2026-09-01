@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 22 >/dev/null 2>&1 || true
 say() { printf '\033[1;36m▸\033[0m %s\n' "$*"; }
-die() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; exit 1; }
+die() { printf '\033[1;31m✗\033[0m %b\n' "$*" >&2; exit 1; }
 
 BRANCH=${KIT_BRANCH:-main}
 REMOTE=${KIT_REMOTE:-origin}
