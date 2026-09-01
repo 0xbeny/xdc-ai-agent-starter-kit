@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { matchApprovalId, parseSlash } from './slash.ts'
+import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
 
 describe('parseSlash', () => {
   it('treats plain text as a message', () => {
@@ -23,5 +23,19 @@ describe('matchApprovalId', () => {
     expect(matchApprovalId(items, 'zzzz')?.id).toBe('zzzz0000-3')
     expect(matchApprovalId(items, 'abcd')).toBeUndefined()
     expect(matchApprovalId(items, 'abcd12')?.id).toBe('abcd1234-1')
+  })
+})
+
+describe('completeSlash', () => {
+  it('completes command words only', () => {
+    expect(completeSlash('/')[0].length).toBeGreaterThan(5)
+    expect(completeSlash('/ap')[0]).toEqual(['/approvals', '/approve'])
+    expect(completeSlash('/approve ab')[0]).toEqual([])
+    expect(completeSlash('hello')[0]).toEqual([])
+  })
+  it('renders aligned help lines', () => {
+    const lines = slashHelpLines()
+    expect(lines.some((l) => l.startsWith('/approve <id>'))).toBe(true)
+    expect(new Set(lines.map((l) => l.search(/\S\s{2,}\S/) > -1)).has(true)).toBe(true)
   })
 })

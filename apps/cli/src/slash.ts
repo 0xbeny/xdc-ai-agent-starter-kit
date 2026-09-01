@@ -50,3 +50,29 @@ export function matchApprovalId<T extends { id: string }>(
   const hits = items.filter((a) => a.id.startsWith(idOrPrefix))
   return hits.length === 1 ? hits[0] : undefined
 }
+
+export const SLASH_COMMANDS: { name: string; arg?: string; help: string }[] = [
+  { name: '/new', help: 'start a fresh conversation (long-term memory is kept)' },
+  { name: '/approvals', help: 'list pending approvals' },
+  { name: '/approve', arg: '<id>', help: 'approve a pending action (id or 8-char prefix)' },
+  { name: '/deny', arg: '<id>', help: 'deny a pending action' },
+  { name: '/status', help: 'model, wallet, workspace, skills, spend' },
+  { name: '/help', help: 'this list' },
+  { name: '/quit', help: 'leave the chat' },
+]
+
+/** readline completer: only completes the command word; returns [matches, textToReplace]. */
+export function completeSlash(line: string): [string[], string] {
+  if (!line.startsWith('/') || /\s/.test(line)) return [[], line]
+  const matches = SLASH_COMMANDS.map((c) => c.name).filter((n) => n.startsWith(line))
+  return [matches.length ? matches : [], line]
+}
+
+export function slashHelpLines(): string[] {
+  const width = Math.max(
+    ...SLASH_COMMANDS.map((c) => `${c.name}${c.arg ? ` ${c.arg}` : ''}`.length),
+  )
+  return SLASH_COMMANDS.map(
+    (c) => `${`${c.name}${c.arg ? ` ${c.arg}` : ''}`.padEnd(width + 2)}${c.help}`,
+  )
+}
