@@ -1,6 +1,7 @@
 export {
   defaultRunner,
   installConsoleRedaction,
+  loadDotEnv,
   makeRedactor,
   parseKeyValues,
   resolveSecrets,

@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 
 export type Env = Record<string, string | undefined>
 
@@ -130,4 +131,24 @@ export function installConsoleRedaction(env: Env): void {
       orig(...args.map((a) => (typeof a === 'string' ? redact(a) : a)))
   }
   c.__kitRedacted = true
+}
+
+/**
+ * Loads KEY=VALUE pairs from a .env file into process.env without overriding variables that are already set
+ * (real environment wins, like the services do). Safe to call when the file does not exist.
+ */
+export function loadDotEnv(path: string, target: NodeJS.ProcessEnv = process.env): string[] {
+  let text: string
+  try {
+    text = readFileSync(path, 'utf8')
+  } catch {
+    return []
+  }
+  const added: string[] = []
+  for (const [key, value] of Object.entries(parseKeyValues(text))) {
+    if (target[key] !== undefined && target[key] !== '') continue
+    target[key] = value
+    added.push(key)
+  }
+  return added
 }

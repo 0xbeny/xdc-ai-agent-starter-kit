@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { makeRedactor, parseKeyValues, resolveSecrets, secretKeys } from './resolve.ts'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { loadDotEnv, makeRedactor, parseKeyValues, resolveSecrets, secretKeys } from './resolve.ts'
 
 const FAKE_KEY = 'sk-live-1234567890' // gitleaks:allow — fixture, not a credential
 const FAKE_PW = 'hunter2hunter2'
@@ -84,5 +88,17 @@ describe('redaction', () => {
 
   it('ignores short values so it never masks common words', () => {
     expect(makeRedactor({ X_TOKEN: 'abc' })('abc is fine')).toBe('abc is fine')
+  })
+})
+
+describe('loadDotEnv', () => {
+  it('fills missing variables, never overrides set ones, tolerates a missing file', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'env-'))
+    const file = join(dir, '.env')
+    writeFileSync(file, 'MODEL_CHAT=openai/gpt-5.6\nEXISTING=from-file\n# comment\nQUOTED="a b"\n')
+    const target: NodeJS.ProcessEnv = { EXISTING: 'from-env' }
+    expect(loadDotEnv(file, target).sort()).toEqual(['MODEL_CHAT', 'QUOTED'])
+    expect(target).toEqual({ EXISTING: 'from-env', MODEL_CHAT: 'openai/gpt-5.6', QUOTED: 'a b' })
+    expect(loadDotEnv(join(dir, 'nope'), target)).toEqual([])
   })
 })
