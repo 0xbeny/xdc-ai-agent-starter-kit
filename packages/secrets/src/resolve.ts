@@ -6,7 +6,11 @@ export type Env = Record<string, string | undefined>
 export type Runner = (file: string, args: string[]) => string
 
 export const defaultRunner: Runner = (file, args) =>
-  execFileSync(file, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 20_000 }).trim()
+  execFileSync(file, args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 20_000,
+  }).trim()
 
 export interface ResolveOptions {
   run?: Runner
@@ -33,7 +37,11 @@ export function parseKeyValues(text: string): Record<string, string> {
     if (idx <= 0) continue
     const key = line.slice(0, idx).trim()
     let value = line.slice(idx + 1).trim()
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1)
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    )
+      value = value.slice(1, -1)
     if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) out[key] = value
   }
   return out
@@ -94,7 +102,11 @@ export function resolveSecrets(input: Env, options: ResolveOptions = {}): Resolv
 
 /** Names that look like credentials; their values are what the redactor masks. */
 export function secretKeys(env: Env): string[] {
-  return Object.keys(env).filter((k) => /(_API_KEY|_SECRET|_TOKEN|PASSWORD|PRIVATE_KEY|MNEMONIC|SEED)$/i.test(k) || /^(KIT_API_TOKEN|DASHBOARD_PASSWORD)$/.test(k))
+  return Object.keys(env).filter(
+    (k) =>
+      /(_API_KEY|_SECRET|_TOKEN|PASSWORD|PRIVATE_KEY|MNEMONIC|SEED)$/i.test(k) ||
+      /^(KIT_API_TOKEN|DASHBOARD_PASSWORD)$/.test(k),
+  )
 }
 
 /** Replaces every known secret value (≥ 8 chars) in a string with a masked marker. */
@@ -114,7 +126,8 @@ export function installConsoleRedaction(env: Env): void {
   const redact = makeRedactor(env)
   for (const level of ['log', 'info', 'warn', 'error', 'debug'] as const) {
     const orig = console[level].bind(console)
-    console[level] = (...args: unknown[]) => orig(...args.map((a) => (typeof a === 'string' ? redact(a) : a)))
+    console[level] = (...args: unknown[]) =>
+      orig(...args.map((a) => (typeof a === 'string' ? redact(a) : a)))
   }
   c.__kitRedacted = true
 }

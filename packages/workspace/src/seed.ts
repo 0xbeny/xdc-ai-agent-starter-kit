@@ -5,7 +5,10 @@ import { join } from 'node:path'
  * Creates the live workspace from the tracked templates when it is missing or empty.
  * Never overwrites: a user's SOUL.md is theirs, and `git pull` can't reach it because workspace/ is ignored.
  */
-export function ensureWorkspace(workspaceDir: string, templatesDir: string): { seeded: boolean; files: string[] } {
+export function ensureWorkspace(
+  workspaceDir: string,
+  templatesDir: string,
+): { seeded: boolean; files: string[] } {
   mkdirSync(workspaceDir, { recursive: true })
   const existing = readdirSync(workspaceDir).filter((f) => !f.startsWith('.'))
   if (existing.length > 0) return { seeded: false, files: existing }

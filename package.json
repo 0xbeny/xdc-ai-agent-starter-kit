@@ -19,14 +19,15 @@
     "format:check": "prettier --check .",
     "db:up": "docker compose -f deploy/compose/docker-compose.yml up -d",
     "db:down": "docker compose -f deploy/compose/docker-compose.yml down",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "check": "pnpm check:ignored && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "setup": "pnpm --filter @xdc-ai/cli setup",
     "login": "pnpm --filter @xdc-ai/cli login",
     "dev:dashboard": "pnpm --filter @xdc-ai/dashboard dev",
     "dev:all": "pnpm --filter @xdc-ai/agent dev & pnpm --filter @xdc-ai/dashboard dev; wait",
     "gateway": "pnpm --filter @xdc-ai/agent gateway",
     "update:kit": "bash scripts/update.sh",
-    "serve": "bash scripts/serve.sh"
+    "serve": "bash scripts/serve.sh",
+    "check:ignored": "bash scripts/check-ignored.sh"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

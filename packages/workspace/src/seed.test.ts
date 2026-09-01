@@ -57,7 +57,9 @@ describe('addMissingFromTemplates', () => {
     const added = addMissingFromTemplates(ws, tpl)
     expect(added).toContain('skills/productivity/pdf')
     expect(added).not.toContain('skills/productivity/docx')
-    expect(readFileSync(join(ws, 'skills', 'productivity', 'docx', 'SKILL.md'), 'utf8')).toBe('my edited docx')
+    expect(readFileSync(join(ws, 'skills', 'productivity', 'docx', 'SKILL.md'), 'utf8')).toBe(
+      'my edited docx',
+    )
     expect(existsSync(join(ws, 'skills', 'productivity', 'pdf', 'SKILL.md'))).toBe(true)
   })
 })
