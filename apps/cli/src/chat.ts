@@ -1,9 +1,10 @@
+import { emitKeypressEvents } from 'node:readline'
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout } from 'node:process'
 
 import pc from 'picocolors'
 
-import { matchApprovalId, parseSlash } from './slash.ts'
+import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
 
 interface ApprovalLike {
   id: string
@@ -23,14 +24,9 @@ async function loadAgent() {
   return { agent: mastra.getAgent('assistant'), kit: getKit() }
 }
 
-const HELP = `
-  ${pc.bold('Type a message')} to talk to your agent. Slash commands:
-  /new              start a fresh conversation (memory keeps long-term facts)
-  /approvals        list pending approvals
-  /approve <id>     approve (id or its 8-char prefix)      /deny <id>
-  /status           model, wallet, workspace, skills
-  /quit             leave (the agent keeps running if started as a service)
-`
+const HELP = `\n  ${pc.bold('Type a message')} to talk to your agent. Slash commands (Tab completes):\n${slashHelpLines()
+  .map((l) => `  ${l}`)
+  .join('\n')}\n`
 
 function fmtApproval(a: ApprovalLike): string {
   const amt = a.amount !== undefined ? ` · ${Number(a.amount) / 1_000_000} USDC` : ''
@@ -64,7 +60,29 @@ export async function runChat(): Promise<void> {
   const { agent, kit } = await loadAgent()
   const resource = `cli:${process.env.USER ?? 'local'}`
   let thread = `cli:${Date.now()}`
-  const rl = createInterface({ input: stdin, output: stdout, terminal: stdin.isTTY === true })
+  const interactive = stdin.isTTY === true
+  const rl = createInterface({
+    input: stdin,
+    output: stdout,
+    terminal: interactive,
+    completer: completeSlash,
+  })
+  if (interactive) {
+    // Typing "/" on an empty line shows the command list right away (Tab still completes).
+    emitKeypressEvents(stdin, rl)
+    stdin.on('keypress', (ch: string | undefined) => {
+      if (ch === '/' && rl.line === '/') {
+        stdout.write(
+          `\n${pc.dim(
+            slashHelpLines()
+              .map((l) => `  ${l}`)
+              .join('\n'),
+          )}\n`,
+        )
+        rl.prompt(true)
+      }
+    })
+  }
   const closed = new Promise<null>((resolve) => rl.once('close', () => resolve(null)))
   const name = kit.config.slots.chat
   console.log(
