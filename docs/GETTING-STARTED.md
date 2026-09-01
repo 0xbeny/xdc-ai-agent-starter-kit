@@ -60,6 +60,14 @@ xdc-agent update          # pull the latest kit; your workspace/, data/ and .env
 
 From a checkout without the shim: `pnpm chat`.
 
+## 3a. Reach the dashboard
+
+The service (or `xdc-agent serve`) serves the dashboard on port 3000 and the agent API on 4111.
+
+- **From your laptop**: `ssh -L 3000:localhost:3000 <user>@<machine>` → http://localhost:3000
+- **On your LAN**: http://<machine-ip>:3000 — set `DASHBOARD_PASSWORD` first (the wizard asks; it also generates `KIT_API_TOKEN`)
+- **From the internet**: Tailscale (recommended), or a Cloudflare Tunnel / Caddy with HTTPS; then set `DASHBOARD_URL` and `AGENT_URL` in `.env` so connector OAuth callbacks work
+
 ## 3b. Run the server and dashboard
 
 ```bash
