@@ -12,11 +12,22 @@ export interface AgentLike {
   ): Promise<string>
 }
 
+export interface RoutineRunLike {
+  id: string
+  at: string
+  name?: string
+  status: 'ok' | 'error'
+  text?: string
+  error?: string
+}
+
 export interface TelegramGatewayOptions {
   token: string
   acl: AccessControl
   agent: AgentLike
   approvals: ApprovalStore
+  /** Optional source of routine (cron) results to push to admins, e.g. the agent's routine-runs.jsonl. */
+  routineRuns?: { since(iso: string): RoutineRunLike[] }
   log?: (line: string) => void
   /** How often to look for new approvals to push to admins (ms). */
   pollMs?: number
@@ -120,6 +131,31 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
 
   bot.catch((err) => log(`error: ${err.message}`))
 
+  let lastRunAt = new Date().toISOString()
+  async function pushRoutineRuns(): Promise<void> {
+    if (!options.routineRuns) return
+    for (const run of options.routineRuns.since(lastRunAt)) {
+      lastRunAt = run.at
+      const head =
+        run.status === 'ok'
+          ? `⏰ Routine${run.name ? ` ${run.name}` : ''} finished`
+          : `⚠️ Routine${run.name ? ` ${run.name}` : ''} failed`
+      const body =
+        run.status === 'ok' ? (run.text ?? '(no output)') : (run.error ?? 'unknown error')
+      for (const adminId of acl.adminIds()) {
+        for (const part of chunk(`${head}\n\n${body}`)) {
+          try {
+            await bot.api.sendMessage(adminId, part)
+          } catch (error) {
+            log(
+              `could not deliver routine result to ${adminId}: ${error instanceof Error ? error.message : String(error)}`,
+            )
+          }
+        }
+      }
+    }
+  }
+
   async function pushNewApprovals(): Promise<void> {
     const pending = await approvals.list('pending')
     for (const a of pending) {
@@ -144,7 +180,10 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
     bot,
     async start() {
       for (const a of await approvals.list('pending')) seen.add(a.id) // don't replay history on boot
-      timer = setInterval(() => void pushNewApprovals(), options.pollMs ?? 5000)
+      timer = setInterval(
+        () => void Promise.all([pushNewApprovals(), pushRoutineRuns()]),
+        options.pollMs ?? 5000,
+      )
       log(`pairing code: ${acl.pairingCode()} (send /pair CODE to the bot)`)
       await bot.start({ onStart: (me) => log(`@${me.username} listening`) })
     },

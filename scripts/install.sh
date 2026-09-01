@@ -47,6 +47,11 @@ else
   say "Non-interactive shell: run  cd $DIR && pnpm setup  to configure the agent"
 fi
 
+if [ -t 0 ] && command -v python3 >/dev/null; then
+  read -r -p "Install Python libraries used by the bundled document skills (docx, pdf, xlsx, pptx)? [Y/n] " py </dev/tty || py=y
+  case "${py:-y}" in n|N) ;; *) python3 -m pip install --quiet --user python-docx pypdf pdfplumber openpyxl python-pptx reportlab 2>/dev/null && say "Python document libraries installed" || say "Could not install Python libraries — the skills will tell you what to install when used";; esac
+fi
+
 if [ "$(uname)" = "Darwin" ] && [ -t 0 ]; then
   printf '\n'; read -r -p "Install as a background service that starts at login (launchd)? [y/N] " yn </dev/tty || yn=n
   if [ "${yn:-n}" = "y" ] || [ "${yn:-n}" = "Y" ]; then

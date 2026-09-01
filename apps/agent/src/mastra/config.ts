@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 
 import { missingKeys, type ModelSlots, resolveModelSlots } from '@xdc-ai/models'
+import { installConsoleRedaction, resolveSecrets } from '@xdc-ai/secrets'
 import { ensureWorkspace } from '@xdc-ai/workspace'
 import { DEFAULT_POLICY, parseUsdc, type PolicyConfig } from '@xdc-ai/xdcai'
 
@@ -29,8 +30,14 @@ function usdc(
 
 /** Everything the agent reads from the environment, in one place, resolved once. */
 export function loadConfig(
-  env: Readonly<Record<string, string | undefined>> = process.env,
+  raw: Readonly<Record<string, string | undefined>> = process.env,
 ): AgentConfig {
+  // Hydrate op:// / bws:// references and SECRETS_COMMAND output, then make sure no log line can echo a secret.
+  const secrets = resolveSecrets({ ...raw }, { log: (l) => console.warn(`[secrets] ${l}`) })
+  const env: Readonly<Record<string, string | undefined>> = secrets.env
+  if (secrets.resolved.length > 0)
+    console.info(`[secrets] hydrated: ${secrets.resolved.join(', ')}`)
+  installConsoleRedaction(env)
   const dataDir = resolveFromRoot(env.AGENT_DATA_DIR?.trim() || './data')
   const slots = resolveModelSlots(env)
   const policy: PolicyConfig = {

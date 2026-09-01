@@ -37,6 +37,7 @@ services:
       AGENT_URL: ${AGENT_URL:-http://agent:4111}
       DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:3000}
       MASTRA_TELEMETRY_DISABLED: '1'
+      COPILOTKIT_TELEMETRY_DISABLED: 'true'
     volumes:
       - ../../workspace:/agent/workspace
       - agent-data:/agent/data

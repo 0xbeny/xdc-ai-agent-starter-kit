@@ -208,6 +208,54 @@ export function kitRoutes(kit: Kit): Route[] {
       },
     }),
 
+    route(kit, '/kit/routines', 'GET', async (c) => {
+      const mastra = c.get('mastra')
+      const list = await mastra.schedules.list()
+      return c.json(json({ routines: list, runs: kit.routineRuns.list(30) }))
+    }),
+
+    route(kit, '/kit/routines', 'POST', async (c) => {
+      const body = (await c.req.json()) as {
+        cron?: unknown
+        prompt?: unknown
+        timezone?: unknown
+        agentId?: unknown
+      }
+      if (typeof body.cron !== 'string' || typeof body.prompt !== 'string' || !body.prompt.trim()) {
+        return c.json({ error: 'cron and prompt are required' }, 400)
+      }
+      const mastra = c.get('mastra')
+      try {
+        const routine = await mastra.schedules.create({
+          agentId: typeof body.agentId === 'string' && body.agentId ? body.agentId : 'assistant',
+          cron: body.cron,
+          prompt: body.prompt,
+          ...(typeof body.timezone === 'string' && body.timezone
+            ? { timezone: body.timezone }
+            : {}),
+        })
+        return c.json(json({ routine }))
+      } catch (error) {
+        return c.json({ error: error instanceof Error ? error.message : String(error) }, 400)
+      }
+    }),
+
+    route(kit, '/kit/routines/:id/:action', 'POST', async (c) => {
+      const mastra = c.get('mastra')
+      const id = c.req.param('id') ?? ''
+      const action = c.req.param('action')
+      try {
+        if (action === 'pause') await mastra.schedules.pause(id)
+        else if (action === 'resume') await mastra.schedules.resume(id)
+        else if (action === 'run') await mastra.schedules.run(id)
+        else if (action === 'delete') await mastra.schedules.delete(id)
+        else return c.json({ error: 'unknown action' }, 400)
+        return c.redirect(`${dashboardUrl(kit)}/routines`)
+      } catch (error) {
+        return c.json({ error: error instanceof Error ? error.message : String(error) }, 400)
+      }
+    }),
+
     route(kit, '/kit/connectors/:id/disconnect', 'POST', async (c) => {
       const id = c.req.param('id') ?? ''
       kit.connectorProvider(id).invalidateCredentials('all')

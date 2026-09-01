@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 22 >/dev/null 2>&1 || true
 export PATH="$HOME/.local/share/pnpm:$PATH"
 set -a; [ -f .env ] && . ./.env; set +a
-export NODE_ENV=production MASTRA_TELEMETRY_DISABLED=1 NEXT_TELEMETRY_DISABLED=1
+export NODE_ENV=production MASTRA_TELEMETRY_DISABLED=1 NEXT_TELEMETRY_DISABLED=1 COPILOTKIT_TELEMETRY_DISABLED=true
 export PORT="${AGENT_PORT:-4111}"
 
 if [ ! -f apps/agent/.mastra/output/index.mjs ] || [ "${REBUILD:-0}" = "1" ]; then

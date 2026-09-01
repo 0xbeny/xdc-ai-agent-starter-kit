@@ -24,6 +24,7 @@ import {
 } from '@xdc-ai/connectors'
 
 import { type AgentConfig, loadConfig } from './config.ts'
+import { RoutineRunLog } from './routine-runs.ts'
 
 /** Process-wide singletons shared by the agent and the kit API. */
 export class Kit {
@@ -32,6 +33,7 @@ export class Kit {
   readonly ledger: JsonlLedger
   readonly policy: PaymentPolicy
   readonly approvals: JsonlApprovalStore
+  readonly routineRuns: RoutineRunLog
   private mcp: MCPClient | undefined
   private tools: Promise<Record<string, unknown>> | undefined
   private catalog: Catalog | undefined
@@ -43,6 +45,7 @@ export class Kit {
     this.ledger = new JsonlLedger(config.ledgerFile)
     this.policy = new PaymentPolicy(config.policy, this.ledger)
     this.approvals = new JsonlApprovalStore(join(config.dataDir, 'approvals.jsonl'))
+    this.routineRuns = new RoutineRunLog(join(config.dataDir, 'routine-runs.jsonl'))
   }
 
   walletConnected(): boolean {

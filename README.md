@@ -59,6 +59,14 @@ it, every transfer and every DeFi action pauses for human approval; anything abo
 the `PAY_DAILY_CAP_USDC` is refused; a repeat of an already-paid request is refused with the earlier tx hash.
 An append-only ledger (`data/ledger.jsonl`) records every attempt. XDC mainnet only — there is no test mode.
 
+### Skills, sandbox, routines, delegation
+
+58 bundled skills (vendored from Hermes Agent, MIT: docx, pdf, xlsx, powerpoint, research, devops, …), a
+sandboxed `run_command` (Seatbelt on macOS / Bubblewrap on Linux, no network by default, destructive
+commands refused), cron **routines** with results delivered to Telegram and the dashboard, and two
+sub-agents (`researcher`, `treasurer`) the assistant can delegate to — all behind the same payment policy
+and approvals inbox.
+
 ### The agent is a folder
 
 `workspace/` holds `SOUL.md` (identity, injected first), `IDENTITY.md`, `USER.md`, `AGENTS.md` (procedures),

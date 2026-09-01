@@ -4,7 +4,11 @@ import { describeModel, resolveModel } from '@xdc-ai/models'
 import { createMemoryTool, createSkillTools, loadWorkspace } from '@xdc-ai/workspace'
 
 import { getKit } from '../kit.ts'
+import { createSandboxTools, sandboxMode } from '../sandbox.ts'
 import { createStorage } from '../storage.ts'
+
+import { researcher } from './researcher.ts'
+import { treasurer } from './treasurer.ts'
 
 const kit = getKit()
 const { config } = kit
@@ -19,6 +23,16 @@ console.info(
 
 const model = resolveModel(config.slots.chat, config.env)
 
+const sandbox =
+  sandboxMode(config.env) === 'local'
+    ? createSandboxTools({
+        dataDir: config.dataDir,
+        allowNetwork: config.env.SANDBOX_ALLOW_NETWORK === '1',
+      })
+    : undefined
+if (sandbox)
+  console.info(`[agent] sandbox: local · ${sandbox.isolation} isolation · ${sandbox.dir}`)
+
 export const assistant = new Agent({
   id: 'assistant',
   name: 'Assistant',
@@ -30,7 +44,14 @@ export const assistant = new Agent({
     ...createSkillTools(config.workspaceDir),
     ...(await kit.xdcaiTools()),
     ...(await kit.connectorToolsAll()),
+    ...(sandbox?.tools ?? {}),
   }),
+  // Delegation: sub-agents appear as tools `agent-researcher` / `agent-treasurer`; the researcher may run in the background.
+  agents: { researcher, treasurer },
+  backgroundTasks: {
+    tools: { 'agent-researcher': { enabled: true, timeoutMs: 10 * 60 * 1000 } },
+    concurrency: 2,
+  },
   memory: new Memory({
     storage: createStorage(config.env),
     options: { lastMessages: 20 },

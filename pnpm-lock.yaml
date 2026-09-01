@@ -74,6 +74,9 @@ importers:
       '@xdc-ai/models':
         specifier: workspace:*
         version: link:../../packages/models
+      '@xdc-ai/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
       '@xdc-ai/workspace':
         specifier: workspace:*
         version: link:../../packages/workspace
@@ -221,6 +224,12 @@ importers:
       ai-sdk-provider-codex-cli:
         specifier: 2.1.2
         version: 2.1.2(zod@4.5.4)
+
+  packages/secrets:
+    devDependencies:
+      '@xdc-ai/config':
+        specifier: workspace:*
+        version: link:../config
 
   packages/workspace:
     dependencies:

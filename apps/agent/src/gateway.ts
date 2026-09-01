@@ -31,6 +31,7 @@ const gateway = createTelegramBot({
   token,
   acl,
   approvals: kit.approvals,
+  routineRuns: kit.routineRuns,
   agent: {
     async reply(text, ctx) {
       const result = await agent.generate(text, {

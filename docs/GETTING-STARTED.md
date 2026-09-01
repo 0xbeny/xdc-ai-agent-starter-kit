@@ -87,6 +87,43 @@ today's spend against the cap, and a searchable marketplace of 100+ pay-per-call
 
 Access is default-deny; `/whoami` shows your id, `TELEGRAM_ADMIN_IDS` / `TELEGRAM_USER_IDS` pre-allow ids.
 
+## 4c. Skills, sandbox, routines and delegation
+
+**Skills.** 58 bundled skills (vendored from Hermes Agent, MIT — `docx`, `pdf`, `xlsx`, `powerpoint`,
+research, devops, email, note-taking, social media, …) live in `workspace/skills/<category>/<name>/SKILL.md`.
+The agent lists them on demand and reads one when a task matches; their scripts run in the sandbox. Add your
+own the same way; `pnpm update:kit` delivers new bundled skills without touching yours. The installer offers
+the Python libraries the document skills use (`python-docx pypdf pdfplumber openpyxl python-pptx reportlab`).
+
+**Sandbox.** `SANDBOX=local` (default) gives the agent `run_command`: commands run in an isolated scratch
+directory under `data/sandbox` with the strongest native isolation on the host — **Seatbelt on macOS,
+Bubblewrap on Linux** — no network unless `SANDBOX_ALLOW_NETWORK=1`, and a deny list for destructive or
+exfiltrating commands (`sudo`, `rm -rf /`, `curl | sh`, force-push, reverse shells…). Set `SANDBOX=off` to
+remove the tool entirely.
+
+**Routines** (cron, Hermes-style). Dashboard → Routines: a cron expression + a prompt the assistant runs on
+schedule (pause / resume / run now / delete). Results are logged, shown on the page and pushed to Telegram
+admins. Anything a routine tries to pay or send still stops in Approvals.
+
+**Delegation.** The assistant can hand work to two sub-agents: `researcher` (read-only tools, may run in the
+background while you keep chatting) and `treasurer` (wallet and marketplace work under the same payment
+policy and the same approvals inbox). Ask for "research X in the background" or "have the treasurer price
+this" — or let the assistant decide.
+
+## 4d. Secrets
+
+Secrets live only in `.env` and `data/` (both git-ignored; token files are written `0600`), are entered
+through masked prompts in `pnpm setup`, never appear in the dashboard, and every known secret value is
+masked in the agent's logs. If you keep keys in a vault, reference them instead of pasting them:
+
+```
+ANTHROPIC_API_KEY=op://Private/Anthropic/credential   # 1Password CLI (`op`)
+OPENAI_API_KEY=bws://5b3f…                             # Bitwarden Secrets Manager CLI (`bws`)
+SECRETS_COMMAND=my-vault export                        # any CLI printing KEY=VALUE lines; fills empty keys
+```
+
+`.env` always wins over the helper unless `SECRETS_OVERRIDE=1`. `gitleaks` runs in CI.
+
 ## 5. Change the model later
 
 Edit `.env` and restart, or re-run `pnpm setup`:

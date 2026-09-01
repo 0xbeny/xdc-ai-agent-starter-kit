@@ -27,6 +27,7 @@
     "@xdc-ai/connectors": "workspace:*",
     "@xdc-ai/gateway": "workspace:*",
     "@xdc-ai/models": "workspace:*",
+    "@xdc-ai/secrets": "workspace:*",
     "@xdc-ai/workspace": "workspace:*",
     "@xdc-ai/xdcai": "workspace:*",
     "openai": "7.8.0",
