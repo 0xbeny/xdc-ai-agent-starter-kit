@@ -1,9 +1,10 @@
 import { Agent } from '@mastra/core/agent'
 import { Memory } from '@mastra/memory'
 import { describeModel, resolveModel } from '@xdc-ai/models'
-import { createMemoryTool, createSkillTools, loadWorkspace } from '@xdc-ai/workspace'
+import { createMemoryTool, createSkillTools, listSkills, loadWorkspace } from '@xdc-ai/workspace'
 
 import { getKit } from '../kit.ts'
+import { kitFacts } from '../kit-facts.ts'
 import { createSandboxTools, sandboxMode } from '../sandbox.ts'
 import { createStorage } from '../storage.ts'
 
@@ -37,7 +38,8 @@ export const assistant = new Agent({
   id: 'assistant',
   name: 'Assistant',
   // Re-read on every run so edits to SOUL.md / MEMORY.md from the dashboard or the memory tool apply next turn.
-  instructions: () => loadWorkspace(config.workspaceDir).prompt,
+  instructions: () =>
+    `${loadWorkspace(config.workspaceDir).prompt}\n\n${kitFacts({ walletConnected: kit.walletConnected(), sandbox: Boolean(sandbox), skills: listSkills(config.workspaceDir).length })}`,
   model: async () => (await model) as never,
   tools: async () => ({
     memory: createMemoryTool(config.workspaceDir),
