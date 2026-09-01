@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import { makeRedactor, parseKeyValues, resolveSecrets, secretKeys } from './resolve.ts'
 
+const FAKE_KEY = 'sk-live-1234567890' // gitleaks:allow — fixture, not a credential
+const FAKE_PW = 'hunter2hunter2'
+
 describe('parseKeyValues', () => {
   it('parses KEY=VALUE lines and ignores junk', () => {
     expect(parseKeyValues('# c\nA=1\nB="two"\n\nnot a pair\n1BAD=x\nC=\'q\'')).toEqual({
@@ -68,15 +71,15 @@ describe('resolveSecrets', () => {
 describe('redaction', () => {
   it('finds credential-shaped keys and masks their values in text', () => {
     const env = {
-      OPENAI_API_KEY: 'sk-live-1234567890',
-      DASHBOARD_PASSWORD: 'hunter2hunter2',
+      OPENAI_API_KEY: FAKE_KEY,
+      DASHBOARD_PASSWORD: FAKE_PW,
       MODEL_CHAT: 'openai/gpt',
-    } // gitleaks:allow — fake fixture
+    }
     expect(secretKeys(env).sort()).toEqual(['DASHBOARD_PASSWORD', 'OPENAI_API_KEY'])
     const redact = makeRedactor(env)
     expect(redact('key=sk-live-1234567890 pw=hunter2hunter2 model=openai/gpt')).toBe(
       'key=***890 pw=***er2 model=openai/gpt',
-    ) // gitleaks:allow
+    )
   })
 
   it('ignores short values so it never masks common words', () => {

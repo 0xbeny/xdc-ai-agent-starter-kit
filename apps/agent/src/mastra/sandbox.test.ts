@@ -21,7 +21,20 @@ describe('sandbox config', () => {
 
 const native = process.platform === 'darwin' || process.platform === 'linux'
 
-describe.runIf(native)('runInSandbox (live, native isolation)', () => {
+describe('createLocalSandbox fallback', () => {
+  it('falls back to no isolation when the native backend is unavailable', () => {
+    const dataDir = mkdtempSync(join(tmpdir(), 'sbx-'))
+    // 'bwrap' is never available on macOS and may be missing on Linux; either way construction must not throw.
+    const out = createLocalSandbox(
+      { dataDir },
+      process.platform === 'darwin' ? 'bwrap' : 'seatbelt',
+    )
+    expect(['none', 'bwrap', 'seatbelt']).toContain(out.isolation)
+    if (out.isolation === 'none') expect(out.fallbackReason).toBeTruthy()
+  })
+})
+
+describe.runIf(native)('runInSandbox (live)', () => {
   it('runs a harmless command inside the scratch dir and refuses a denied one without spawning', async () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'sbx-'))
     const { sandbox, isolation } = createLocalSandbox({ dataDir })
