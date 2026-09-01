@@ -27,11 +27,19 @@ export interface StoredAuth {
   codeVerifier?: string | undefined
 }
 
+/**
+ * xdcai.tech's registration endpoint requires an https or loopback redirect URI even for device-code
+ * clients, so we register a loopback one (never listened on) alongside the device grant.
+ */
 export const CLIENT_METADATA: OAuthClientMetadata = {
   client_name: 'xdc-ai-agent-starter-kit',
-  redirect_uris: [],
-  grant_types: ['urn:ietf:params:oauth:grant-type:device_code', 'refresh_token'],
-  response_types: [],
+  redirect_uris: ['http://127.0.0.1/callback'],
+  grant_types: [
+    'authorization_code',
+    'urn:ietf:params:oauth:grant-type:device_code',
+    'refresh_token',
+  ],
+  response_types: ['code'],
   token_endpoint_auth_method: 'none',
   scope: 'wallet',
 }
