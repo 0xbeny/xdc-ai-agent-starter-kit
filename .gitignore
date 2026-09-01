@@ -1,0 +1,32 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+**/secrets/
+
+# dependencies / build
+node_modules/
+dist/
+.mastra/
+.build/
+*.tsbuildinfo
+coverage/
+
+# local data
+*.db
+*.db-*
+data/
+workspace/memory/
+workspace/IDENTITY.md
+workspace/USER.md
+workspace/MEMORY.md
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

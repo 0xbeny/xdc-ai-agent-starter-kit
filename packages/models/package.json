@@ -1,0 +1,17 @@
+{
+  "name": "@xdc-ai/models",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@xdc-ai/config": "workspace:*"
+  }
+}
