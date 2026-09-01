@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated build output (never committed) trips generic-api-key on bundled third-party code"
+paths = ['''(^|/)\.next/''', '''(^|/)\.mastra/''', '''(^|/)dist/''', '''(^|/)node_modules/''']
