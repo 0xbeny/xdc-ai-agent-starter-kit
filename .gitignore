@@ -14,14 +14,11 @@ dist/
 *.tsbuildinfo
 coverage/
 
-# local data
+# local data — the live agent (seeded from templates/workspace on first run) and its state; updates never touch these
 *.db
 *.db-*
 data/
-workspace/memory/
-workspace/IDENTITY.md
-workspace/USER.md
-workspace/MEMORY.md
+workspace/
 
 # os / editor
 .DS_Store

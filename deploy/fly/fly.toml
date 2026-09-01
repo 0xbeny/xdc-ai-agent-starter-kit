@@ -1,0 +1,27 @@
+# Fly.io: agent as a long-running machine. `fly launch --copy-config --no-deploy` then `fly secrets set ...` then `fly deploy`.
+app = "xdc-ai-agent"
+primary_region = "ams"
+
+[build]
+  dockerfile = "../docker/agent.Dockerfile"
+
+[env]
+  PORT = "4111"
+  HOST = "0.0.0.0"
+  AGENT_WORKSPACE = "/agent/workspace"
+  AGENT_DATA_DIR = "/agent/data"
+  MASTRA_TELEMETRY_DISABLED = "1"
+
+[[mounts]]
+  source = "agent_data"
+  destination = "/agent"
+
+[http_service]
+  internal_port = 4111
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

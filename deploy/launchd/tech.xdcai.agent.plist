@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Mac mini, no Docker: runs scripts/serve.sh (agent + dashboard + Telegram gateway) at login and restarts it if it stops.
+     Install:
+       sed "s|__REPO__|$PWD|g" deploy/launchd/tech.xdcai.agent.plist > ~/Library/LaunchAgents/tech.xdcai.agent.plist
+       launchctl load -w ~/Library/LaunchAgents/tech.xdcai.agent.plist
+     Logs: data/service.out.log, data/service.err.log.  Stop: launchctl unload ~/Library/LaunchAgents/tech.xdcai.agent.plist -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>tech.xdcai.agent</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>__REPO__/scripts/serve.sh</string></array>
+  <key>WorkingDirectory</key><string>__REPO__</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>__REPO__/data/service.out.log</string>
+  <key>StandardErrorPath</key><string>__REPO__/data/service.err.log</string>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string></dict>
+</dict></plist>

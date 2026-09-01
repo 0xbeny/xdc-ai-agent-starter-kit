@@ -1,0 +1,16 @@
+# Linux without Docker: sudo cp deploy/systemd/xdc-ai-agent-native.service /etc/systemd/system/xdc-ai-agent.service
+#   edit User/WorkingDirectory, then: sudo systemctl enable --now xdc-ai-agent
+[Unit]
+Description=xdc-ai-agent-starter-kit (native: agent + dashboard + gateway)
+After=network-online.target
+
+[Service]
+Type=simple
+User=agent
+WorkingDirectory=/opt/xdc-ai-agent-starter-kit
+ExecStart=/bin/bash /opt/xdc-ai-agent-starter-kit/scripts/serve.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

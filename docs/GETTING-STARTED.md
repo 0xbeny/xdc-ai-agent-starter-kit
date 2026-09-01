@@ -76,6 +76,17 @@ Reads are automatic; writes and sends go through Approvals.
 **Watch the money.** **Wallet** shows balances, the ledger (every attempt, with tx links to xdcscan),
 today's spend against the cap, and a searchable marketplace of 100+ pay-per-call APIs.
 
+## 4b. Talk to it from Telegram
+
+1. Create a bot with [@BotFather](https://t.me/BotFather) and put the token in `.env` as `TELEGRAM_BOT_TOKEN`.
+2. `pnpm gateway` — the log prints a 6-digit **pairing code**.
+3. In Telegram, open your bot and send `/pair 123456`. The first person to pair becomes admin.
+4. Delegate tasks by message. Admins receive every approval request with **Approve / Deny** buttons
+   and can list them with `/approvals`. Decisions made in Telegram and in the dashboard are the same
+   record.
+
+Access is default-deny; `/whoami` shows your id, `TELEGRAM_ADMIN_IDS` / `TELEGRAM_USER_IDS` pre-allow ids.
+
 ## 5. Change the model later
 
 Edit `.env` and restart, or re-run `pnpm setup`:
@@ -91,11 +102,50 @@ MODEL_CHAT=custom/qwen3-32b@http://gpu-box:8000/v1  # any OpenAI-compatible serv
 
 ## 6. Run it on a Mac mini or a server
 
-Same repo. Today: run `pnpm db:up`, `pnpm dev` and `pnpm dev:dashboard` under `tmux`/`launchd`, set
-`DASHBOARD_PASSWORD` and `KIT_API_TOKEN` in `.env`, and put the dashboard behind your reverse proxy.
-Coming next (Phase 4): production images in `deploy/compose`, `launchd`/`systemd` units, a one-line
-installer, Coolify/Dokploy templates, Vercel + Fly recipes. Everything the agent is lives in three
-paths — `workspace/`, `data/`, and the database — so backup and migration are a copy.
+One-line install on a fresh machine (installs Node 22 + pnpm if missing, clones, runs setup):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh | bash
+```
+
+**Mac mini / any always-on machine, no Docker.** Choose SQLite in setup (or point `DATABASE_URL` at any
+Postgres). `scripts/serve.sh` builds once and runs agent + dashboard + Telegram gateway as plain Node
+processes; the installer offers to register it with `launchd` so it starts at login and restarts itself:
+
+```bash
+bash scripts/serve.sh                      # foreground
+# or as a login service:
+sed "s|__REPO__|$PWD|g" deploy/launchd/tech.xdcai.agent.plist > ~/Library/LaunchAgents/tech.xdcai.agent.plist
+launchctl load -w ~/Library/LaunchAgents/tech.xdcai.agent.plist
+```
+
+Linux without Docker: `deploy/systemd/xdc-ai-agent-native.service`.
+
+**Servers with Docker** (agent + dashboard + Postgres + Redis, optional Telegram gateway and Ollama):
+
+```bash
+cp .env.example .env   # set MODEL_CHAT + key, POSTGRES_PASSWORD, KIT_API_TOKEN, DASHBOARD_PASSWORD, DASHBOARD_URL, AGENT_URL
+docker compose -f deploy/compose/docker-compose.prod.yml --env-file .env --profile telegram up -d --build
+```
+
+- **Linux server**: `deploy/systemd/xdc-ai-agent.service` wraps the compose stack.
+- **Coolify / Dokploy**: point them at `deploy/compose/docker-compose.prod.yml` — see `deploy/coolify/README.md`.
+- **Cloud**: agent on Fly.io (`deploy/fly`), dashboard on Vercel (`deploy/vercel`).
+
+Everything the agent is lives in three paths — `workspace/`, `data/` (the `agent-data` volume), and the
+database — so backup and migration are a copy.
+
+## 7. Update the kit without touching your agent
+
+```bash
+pnpm update:kit        # fast-forwards from the original repo, reinstalls, rebuilds, restarts the service
+```
+
+Your agent's identity and state are never tracked by git — `workspace/` (SOUL.md, memory, skills), `data/`
+(wallet tokens, ledger, approvals, connector tokens), `.env` and the database — so an update can only change
+kit code. New template files (e.g. a new default skill) are added if missing; anything you edited is left
+alone. The update refuses to run if you modified kit files yourself (commit or stash first), and it never
+force-pulls.
 
 ## Security defaults worth knowing
 

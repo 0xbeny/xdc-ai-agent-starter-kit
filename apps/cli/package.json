@@ -17,6 +17,7 @@
     "@clack/prompts": "1.7.0",
     "@mastra/core": "1.63.2",
     "@xdc-ai/models": "workspace:*",
+    "@xdc-ai/workspace": "workspace:*",
     "@xdc-ai/xdcai": "workspace:*",
     "picocolors": "1.1.1",
     "zod": "4.5.4"

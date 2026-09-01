@@ -1,0 +1,17 @@
+# Linux server: sudo cp deploy/systemd/xdc-ai-agent.service /etc/systemd/system/ && edit WorkingDirectory
+#               sudo systemctl enable --now xdc-ai-agent
+[Unit]
+Description=xdc-ai-agent-starter-kit (agent + dashboard via docker compose)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/xdc-ai-agent-starter-kit
+ExecStart=/usr/bin/docker compose -f deploy/compose/docker-compose.prod.yml --env-file .env up
+ExecStop=/usr/bin/docker compose -f deploy/compose/docker-compose.prod.yml --env-file .env down
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

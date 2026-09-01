@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 
 import { missingKeys, type ModelSlots, resolveModelSlots } from '@xdc-ai/models'
+import { ensureWorkspace } from '@xdc-ai/workspace'
 import { DEFAULT_POLICY, parseUsdc, type PolicyConfig } from '@xdc-ai/xdcai'
 
 import { resolveFromRoot } from './paths.ts'
@@ -8,6 +9,7 @@ import { resolveFromRoot } from './paths.ts'
 export interface AgentConfig {
   env: Readonly<Record<string, string | undefined>>
   workspaceDir: string
+  templatesDir: string
   dataDir: string
   authFile: string
   ledgerFile: string
@@ -40,9 +42,15 @@ export function loadConfig(
     .map((s) => s.trim())
     .filter(Boolean)
   if (allow && allow.length > 0) policy.allowedProviders = allow
+  const workspaceDir = resolveFromRoot(env.AGENT_WORKSPACE?.trim() || './workspace')
+  const templatesDir = resolveFromRoot(env.AGENT_TEMPLATES?.trim() || './templates/workspace')
+  const seeded = ensureWorkspace(workspaceDir, templatesDir)
+  if (seeded.seeded)
+    console.info(`[agent] seeded workspace at ${workspaceDir} from ${templatesDir}`)
   return {
     env,
-    workspaceDir: resolveFromRoot(env.AGENT_WORKSPACE?.trim() || './workspace'),
+    workspaceDir,
+    templatesDir,
     dataDir,
     authFile: join(dataDir, 'xdcai-auth.json'),
     ledgerFile: join(dataDir, 'ledger.jsonl'),

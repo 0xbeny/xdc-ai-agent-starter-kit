@@ -14,6 +14,8 @@ import {
 } from '@xdc-ai/xdcai'
 import pc from 'picocolors'
 
+import { ensureWorkspace } from '@xdc-ai/workspace'
+
 import { mergeEnv, parseEnv } from './env-file.ts'
 import { envKeyFor, modelSpecString, PROVIDERS, providerById } from './providers.ts'
 import { smokeTest } from './smoke.ts'
@@ -318,6 +320,7 @@ export async function login(store: FileAuthStore): Promise<void> {
 }
 
 function seedWorkspace(dir: string): void {
-  if (existsSync(join(dir, 'SOUL.md'))) return
-  p.log.warn(`No SOUL.md in ${dir}; the agent will use a plain default persona until you add one.`)
+  const out = ensureWorkspace(dir, join(dir, '..', 'templates', 'workspace'))
+  if (out.seeded)
+    p.log.info(`Seeded ${dir} from templates/workspace — edit SOUL.md to make it yours.`)
 }

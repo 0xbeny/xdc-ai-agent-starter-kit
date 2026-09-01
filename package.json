@@ -23,7 +23,10 @@
     "setup": "pnpm --filter @xdc-ai/cli setup",
     "login": "pnpm --filter @xdc-ai/cli login",
     "dev:dashboard": "pnpm --filter @xdc-ai/dashboard dev",
-    "dev:all": "pnpm --filter @xdc-ai/agent dev & pnpm --filter @xdc-ai/dashboard dev; wait"
+    "dev:all": "pnpm --filter @xdc-ai/agent dev & pnpm --filter @xdc-ai/dashboard dev; wait",
+    "gateway": "pnpm --filter @xdc-ai/agent gateway",
+    "update:kit": "bash scripts/update.sh",
+    "serve": "bash scripts/serve.sh"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

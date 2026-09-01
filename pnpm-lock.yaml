@@ -68,6 +68,9 @@ importers:
       '@xdc-ai/connectors':
         specifier: workspace:*
         version: link:../../packages/connectors
+      '@xdc-ai/gateway':
+        specifier: workspace:*
+        version: link:../../packages/gateway
       '@xdc-ai/models':
         specifier: workspace:*
         version: link:../../packages/models
@@ -90,6 +93,9 @@ importers:
       mastra:
         specifier: 1.27.2
         version: 1.27.2(@hono/node-server@1.19.17(hono@4.13.5))(@mastra/core@1.63.2(@bufbuild/protobuf@2.14.1)(ai@6.0.273(zod@4.5.4))(express@5.2.1)(rxjs@7.8.1)(zod@4.5.4))(rxjs@7.8.1)(typescript@6.0.3)(zod@4.5.4)
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
 
   apps/cli:
     dependencies:
@@ -102,6 +108,9 @@ importers:
       '@xdc-ai/models':
         specifier: workspace:*
         version: link:../../packages/models
+      '@xdc-ai/workspace':
+        specifier: workspace:*
+        version: link:../../packages/workspace
       '@xdc-ai/xdcai':
         specifier: workspace:*
         version: link:../../packages/xdcai
@@ -178,6 +187,19 @@ importers:
       zod:
         specifier: 4.5.4
         version: 4.5.4
+    devDependencies:
+      '@xdc-ai/config':
+        specifier: workspace:*
+        version: link:../config
+
+  packages/gateway:
+    dependencies:
+      '@xdc-ai/xdcai':
+        specifier: workspace:*
+        version: link:../xdcai
+      grammy:
+        specifier: 1.46.0
+        version: 1.46.0
     devDependencies:
       '@xdc-ai/config':
         specifier: workspace:*
@@ -1078,6 +1100,9 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@grammyjs/types@5.0.0':
+    resolution: {integrity: sha512-iq1Qrq1iPKkB8yAa0qSuIURMZOCuqTY5pWy5gHpCeL1oQ+GPadGhw/cDTVE8waJwuCzacUzuIjRv1sESvk7u7A==}
 
   '@graphql-tools/executor@2.0.0':
     resolution: {integrity: sha512-BjoqO5UfcV3BUqamGtHNm4ITBk040VOmWql/MrUefPo30x6t4v1+engfjgAjWikMsRPLU4ZC6e2QjICLucnOTA==}
@@ -3999,6 +4024,10 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  grammy@1.46.0:
+    resolution: {integrity: sha512-/8Qw+iisrUdOMk+p2mjEHouMm/BBdBEN1DHh16wiTpRUZkxDG3PxexdjCvR+wvK3LWPdrEvnQbdrwpU954sPhg==}
+    engines: {node: ^12.20.0 || >=14.13.1}
 
   graphql-query-complexity@0.12.0:
     resolution: {integrity: sha512-fWEyuSL6g/+nSiIRgIipfI6UXTI7bAxrpPlCY1c0+V3pAEUo1ybaKmSBgNr1ed2r+agm1plJww8Loig9y6s2dw==}
@@ -7542,6 +7571,8 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
+  '@grammyjs/types@5.0.0': {}
+
   '@graphql-tools/executor@2.0.0(graphql@16.14.2)':
     dependencies:
       '@graphql-tools/utils': 12.0.0(graphql@16.14.2)
@@ -10708,6 +10739,16 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
+
+  grammy@1.46.0:
+    dependencies:
+      '@grammyjs/types': 5.0.0
+      abort-controller: 3.0.0
+      debug: 4.4.3
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
 
   graphql-query-complexity@0.12.0(graphql@16.14.2):
     dependencies:

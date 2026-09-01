@@ -1,0 +1,21 @@
+{
+  "name": "@xdc-ai/gateway",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@xdc-ai/xdcai": "workspace:*",
+    "grammy": "1.46.0"
+  },
+  "devDependencies": {
+    "@xdc-ai/config": "workspace:*"
+  }
+}
