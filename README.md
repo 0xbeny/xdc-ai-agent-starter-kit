@@ -6,7 +6,7 @@ durable workflows with human approvals, any LLM behind one config line, first-pa
 Slack and Google Workspace, a human dashboard with chat — and [xdcai.tech](https://xdcai.tech) wired in
 as the default wallet and pay-per-call tool marketplace on XDC.
 
-> Status: Phase 1 (agent core + xdcai default). See `docs/adr/` for decisions.
+> **Site:** https://xdc-agent-kit-vert.vercel.app · Status: v0.1 alpha — installable; see `docs/adr/` for decisions.
 
 ## Quick start
 
