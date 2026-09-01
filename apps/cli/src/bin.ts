@@ -66,7 +66,12 @@ switch (command) {
   case 'dashboard':
   case 'ui':
     await ensureConfigured()
-    await openDashboard(root)
+    try {
+      await openDashboard(root)
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error))
+      process.exit(1)
+    }
     break
   case 'telegram':
     await ensureConfigured()

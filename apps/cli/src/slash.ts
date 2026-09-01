@@ -14,6 +14,7 @@ export type SlashCommand =
   | { kind: 'usage' }
   | { kind: 'routines' }
   | { kind: 'retry' }
+  | { kind: 'dashboard' }
   | { kind: 'help' }
   | { kind: 'quit' }
   | { kind: 'unknown'; text: string }
@@ -56,6 +57,9 @@ export function parseSlash(line: string): SlashCommand {
       return { kind: 'routines' }
     case 'retry':
       return { kind: 'retry' }
+    case 'dashboard':
+    case 'ui':
+      return { kind: 'dashboard' }
     case 'help':
     case '?':
       return { kind: 'help' }
@@ -97,6 +101,10 @@ export const SLASH_COMMANDS: { name: string; arg?: string; help: string }[] = [
   { name: '/tools', help: 'tools the agent can call right now' },
   { name: '/memory', help: 'show MEMORY.md (what the agent chose to remember)' },
   { name: '/routines', help: 'scheduled routines (cron) and recent runs' },
+  {
+    name: '/dashboard',
+    help: 'start the web UI if needed and open it (or print the ssh tunnel command)',
+  },
   { name: '/status', help: 'model, wallet, workspace, skills, spend' },
   { name: '/help', help: 'this list' },
   { name: '/quit', help: 'leave the chat' },

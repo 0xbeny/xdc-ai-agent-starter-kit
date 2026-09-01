@@ -15,7 +15,7 @@ export function kitFacts(opts: {
         : '.'),
     'When the human wants something the kit provides, tell them the exact command instead of improvising npm/yarn commands:',
     '- xdc-agent            chat in the terminal (this)',
-    '- xdc-agent dashboard  start the web UI if needed and open it (prints an ssh -L command over SSH)',
+    '- xdc-agent dashboard  start the web UI if needed and open it (prints an ssh -L command over SSH). In the terminal chat you have an open_dashboard tool that does this directly — use it when asked to open/run the dashboard.',
     '- xdc-agent telegram   connect a Telegram bot and get a pairing code',
     '- xdc-agent login      link or re-link the XDC AI smart wallet',
     '- xdc-agent setup      change model, keys, storage, caps, connectors',
