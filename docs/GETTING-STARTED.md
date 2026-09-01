@@ -166,7 +166,7 @@ SECRETS_COMMAND=my-vault export                        # any CLI printing KEY=VA
 Edit `.env` and restart, or re-run `pnpm setup`:
 
 ```
-MODEL_CHAT=claude-code/sonnet                       # your Claude subscription via the local CLI
+MODEL_CHAT=claude-code/sonnet                       # your Claude subscription via the local CLI (tools bridged as MCP; no sub-agents)
 MODEL_CHAT=xai/grok-4.3                             # + XAI_API_KEY
 MODEL_CHAT=moonshot/kimi-k2.7                       # + MOONSHOT_API_KEY
 MODEL_CHAT=openrouter/deepseek/deepseek-v4          # + OPENROUTER_API_KEY

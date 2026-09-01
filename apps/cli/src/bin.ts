@@ -23,6 +23,7 @@ function findRoot(start: string): string {
 }
 
 const root = findRoot(process.cwd())
+process.env.KIT_CONTEXT = 'cli' // the agent attaches machine-operating tools (open_dashboard) only in the terminal chat
 loadDotEnv(join(root, '.env')) // tsx does not load .env; services and `mastra dev` do
 const paths = {
   root,

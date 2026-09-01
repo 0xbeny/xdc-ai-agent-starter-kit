@@ -1,10 +1,22 @@
 import { Agent } from '@mastra/core/agent'
-import { resolveModel } from '@xdc-ai/models'
+import { createModelFactory } from '../model.ts'
 
 import { getKit } from '../kit.ts'
 
 const kit = getKit()
-const model = resolveModel(kit.config.slots.fast, kit.config.env)
+
+const readOnlyTools = async (): Promise<Record<string, unknown>> => {
+  const all = { ...(await kit.xdcaiTools()), ...(await kit.connectorToolsAll()) }
+  return Object.fromEntries(
+    Object.entries(all).filter(
+      ([name]) =>
+        !/(call|transfer|defi_|payee|authorize|send|create|update|delete|write|post|upload|move|archive)/i.test(
+          name,
+        ),
+    ),
+  )
+}
+const model = createModelFactory(kit.config.slots.fast, kit.config.env, readOnlyTools)
 
 /** Delegated research: reads, searches, summarises. Cannot pay or send anything. */
 export const researcher = new Agent({

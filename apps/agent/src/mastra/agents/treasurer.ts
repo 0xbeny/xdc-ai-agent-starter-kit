@@ -1,10 +1,11 @@
 import { Agent } from '@mastra/core/agent'
-import { resolveModel } from '@xdc-ai/models'
+import { createModelFactory } from '../model.ts'
 
 import { getKit } from '../kit.ts'
 
 const kit = getKit()
-const model = resolveModel(kit.config.slots.chat, kit.config.env)
+
+const model = createModelFactory(kit.config.slots.chat, kit.config.env, () => kit.xdcaiTools())
 
 /** Delegated wallet work under the same payment policy and approval inbox as the assistant. */
 export const treasurer = new Agent({
@@ -18,6 +19,6 @@ export const treasurer = new Agent({
     'Never retry a failed paid call blind: verify the transaction first.',
     'Return amounts in USDC with 6 decimals max and include tx hashes.',
   ].join('\n'),
-  model: async () => (await model) as never,
+  model: async () => (await model()) as never,
   tools: async () => (await kit.xdcaiTools()) as never,
 })

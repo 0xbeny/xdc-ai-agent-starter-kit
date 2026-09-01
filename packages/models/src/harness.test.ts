@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  bridgedToolNames,
   HARNESS_PROVIDERS,
   HarnessError,
   isHarnessProvider,
@@ -31,7 +32,7 @@ describe('harness providers', () => {
     const importer = async (pkg: string) => {
       calls.push(pkg)
       return {
-        createClaudeCode: (settings: unknown) => (id: string) => (
+        createClaudeCode: () => (id: string, settings: unknown) => (
           calls.push(settings),
           fakeModel(id)
         ),
@@ -42,7 +43,7 @@ describe('harness providers', () => {
       { importer, settings: { maxTurns: 1 } },
     )
     expect(model.modelId).toBe('opus')
-    expect(calls).toEqual(['ai-sdk-provider-claude-code', { maxTurns: 1 }])
+    expect(calls).toEqual(['ai-sdk-provider-claude-code', { maxTurns: 1, settingSources: [] }])
   })
 
   it('falls back to the default model id when none is given', async () => {
@@ -77,5 +78,56 @@ describe('harness providers', () => {
     expect(isLanguageModelLike(fakeModel('m'))).toBe(true)
     expect(isLanguageModelLike({ specificationVersion: 'v4' })).toBe(false)
     expect(isLanguageModelLike('openai/gpt-5.6')).toBe(false)
+  })
+})
+
+describe('tool bridging', () => {
+  it('turns bridgeTools into an in-process MCP server plus allowedTools for Claude Code', async () => {
+    const seen: { settings?: Record<string, unknown>; serverArgs?: unknown[] } = {}
+    const importer = async () => ({
+      createClaudeCode: () => (id: string, settings: Record<string, unknown>) => {
+        seen.settings = settings
+        return fakeModel(id)
+      },
+      createAiSdkMcpServer: (...args: unknown[]) => {
+        seen.serverArgs = args
+        return { type: 'sdk', name: args[0] }
+      },
+    })
+    const tools = {
+      memory: { description: 'm', inputSchema: {}, execute: async () => 'ok' },
+      xdcai_call: { inputSchema: {} },
+    }
+    await loadHarnessModel(
+      { provider: 'claude-code', model: 'sonnet' },
+      { importer, bridgeTools: tools, settings: { allowedTools: ['Read'] } },
+    )
+    expect(seen.serverArgs?.[0]).toBe('kit')
+    expect(Object.keys(seen.serverArgs?.[1] as object)).toEqual(['memory', 'xdcai_call'])
+    expect((seen.settings?.mcpServers as Record<string, unknown>).kit).toEqual({
+      type: 'sdk',
+      name: 'kit',
+    })
+    expect(seen.settings?.allowedTools).toEqual([
+      'Read',
+      'mcp__kit__memory',
+      'mcp__kit__xdcai_call',
+    ])
+  })
+
+  it('warns and stays chat-only when the provider cannot bridge', async () => {
+    const importer = async () => ({ createCodexCli: () => (id: string) => fakeModel(id) })
+    const model = await loadHarnessModel(
+      { provider: 'codex', model: 'gpt-5.5' },
+      { importer, bridgeTools: { a: { inputSchema: {} } } },
+    )
+    expect(model.modelId).toBe('gpt-5.5')
+  })
+
+  it('names bridged tools the way the CLI sees them', () => {
+    expect(bridgedToolNames('kit', { memory: 1, run_command: 1 })).toEqual([
+      'mcp__kit__memory',
+      'mcp__kit__run_command',
+    ])
   })
 })

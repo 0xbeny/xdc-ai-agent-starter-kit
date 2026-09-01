@@ -73,10 +73,29 @@ export function isLanguageModelLike(value: unknown): value is LanguageModelLike 
 
 const defaultImporter: Importer = (pkg) => import(pkg) as Promise<Record<string, unknown>>
 
+/** Structural view of an AI-SDK-style tool the harness can expose to the CLI as an MCP tool. */
+export interface BridgeableTool {
+  description?: string
+  /** Must be a Zod object schema for the Claude Code bridge. */
+  inputSchema: unknown
+  execute?: (input: unknown) => unknown
+}
+
 export interface LoadHarnessOptions {
   importer?: Importer
   /** Passed to the provider factory (e.g. `pathToClaudeCodeExecutable`, `env`). */
   settings?: Record<string, unknown>
+  /**
+   * Tools to expose to the harness. Coding-CLI providers ignore per-call AI SDK tools (the CLI runs its own
+   * tool loop), so the kit bridges them as an in-process MCP server named `bridgeName` and allow-lists them.
+   */
+  bridgeTools?: Record<string, BridgeableTool>
+  bridgeName?: string
+}
+
+/** Names the CLI will see for bridged tools: mcp__<server>__<tool>. */
+export function bridgedToolNames(bridgeName: string, tools: Record<string, unknown>): string[] {
+  return Object.keys(tools).map((t) => `mcp__${bridgeName}__${t}`)
 }
 
 export async function loadHarnessModel(
@@ -99,13 +118,40 @@ export async function loadHarnessModel(
   if (typeof factory !== 'function') {
     throw new HarnessError(`${desc.pkg} does not export ${desc.factory}()`)
   }
-  const provider = (factory as (settings?: Record<string, unknown>) => unknown)(
-    options.settings ?? {},
-  )
+  const settings: Record<string, unknown> = { ...(options.settings ?? {}) }
+  const bridge = options.bridgeTools ?? {}
+  if (Object.keys(bridge).length > 0) {
+    const bridgeName = options.bridgeName ?? 'kit'
+    const createServer = mod.createAiSdkMcpServer
+    if (typeof createServer === 'function') {
+      const server = (
+        createServer as (name: string, tools: Record<string, BridgeableTool>) => unknown
+      )(bridgeName, bridge)
+      settings.mcpServers = {
+        ...((settings.mcpServers as Record<string, unknown> | undefined) ?? {}),
+        [bridgeName]: server,
+      }
+      const allowed = Array.isArray(settings.allowedTools)
+        ? (settings.allowedTools as string[])
+        : []
+      settings.allowedTools = [...new Set([...allowed, ...bridgedToolNames(bridgeName, bridge)])]
+    } else {
+      console.warn(
+        `[models] ${desc.pkg} cannot bridge tools (no createAiSdkMcpServer); the agent will be chat-only on this provider`,
+      )
+    }
+  }
+  // Isolation by default: the harness must not inherit the human's own CLI settings, MCP servers or skills.
+  if (settings.settingSources === undefined) settings.settingSources = []
+  const provider = (factory as (options?: Record<string, unknown>) => unknown)({})
   if (typeof provider !== 'function') {
     throw new HarnessError(`${desc.pkg}.${desc.factory}() did not return a provider function`)
   }
-  const model = (provider as (id: string) => unknown)(spec.model || desc.defaultModel)
+  // Provider settings (mcpServers, allowedTools, cwd, …) belong on the model call for these providers.
+  const model = (provider as (id: string, settings?: Record<string, unknown>) => unknown)(
+    spec.model || desc.defaultModel,
+    settings,
+  )
   if (!isLanguageModelLike(model)) {
     throw new HarnessError(`${desc.pkg} returned something that is not an AI SDK language model`)
   }

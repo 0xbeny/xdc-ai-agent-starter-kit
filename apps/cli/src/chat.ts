@@ -6,9 +6,6 @@ import { join } from 'node:path'
 
 import pc from 'picocolors'
 
-import { createTool } from '@mastra/core/tools'
-import { z } from 'zod'
-
 import { openDashboard } from './dashboard.ts'
 import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
 
@@ -78,28 +75,6 @@ export async function runChat(): Promise<void> {
   process.stdout.write(pc.dim('starting your agent…\n'))
   const { mastra, agent, kit } = await loadAgent()
   const root = join(kit.config.workspaceDir, '..')
-  // Tools that only make sense from this terminal session (the CLI process can start services; the agent server cannot).
-  const localTools = {
-    open_dashboard: createTool({
-      id: 'open_dashboard',
-      description:
-        'Start the web dashboard if it is not running and open it for the human (or print the ssh tunnel command when they are on SSH). Use when the human asks to open, run, start or show the dashboard/UI.',
-      inputSchema: z.object({}),
-      outputSchema: z.object({ ok: z.boolean(), message: z.string() }),
-      execute: async () => {
-        try {
-          await openDashboard(root)
-          return {
-            ok: true,
-            message:
-              'Dashboard is running; the URL (or ssh -L command) was printed in the terminal.',
-          }
-        } catch (error) {
-          return { ok: false, message: error instanceof Error ? error.message : String(error) }
-        }
-      },
-    }),
-  }
   let lastMessage: string | undefined
   let lastUsage: unknown
   const resource = `cli:${process.env.USER ?? 'local'}`
@@ -376,7 +351,6 @@ export async function runChat(): Promise<void> {
     try {
       const stream = await agent.stream(message, {
         memory: { thread, resource },
-        toolsets: { cli: localTools },
       })
       let wrote = false
       for await (const part of stream.textStream) {

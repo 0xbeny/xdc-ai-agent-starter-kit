@@ -18,3 +18,5 @@ export type {
 } from './harness.ts'
 export { describeModel, resolveModel } from './resolve.ts'
 export type { ResolvedModel } from './resolve.ts'
+export type { BridgeableTool } from './harness.ts'
+export { bridgedToolNames } from './harness.ts'

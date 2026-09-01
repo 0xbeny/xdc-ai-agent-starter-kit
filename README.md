@@ -48,7 +48,9 @@ MODEL_CHAT=codex/gpt-5.5          # routes through the `codex` CLI login
 ```
 
 These "harness" providers load optional packages (`ai-sdk-provider-claude-code`, `ai-sdk-provider-codex-cli`)
-and need the CLI installed and logged in (`claude auth login`, `codex login`). They are meant for personal use
+and need the CLI installed and logged in (`claude auth login`, `codex login`). With Claude Code the agent's tools
+(memory, wallet, skills, sandbox…) are bridged into the CLI as an MCP server; sub-agents are not available under a
+harness, and Codex is chat-only for now. They are meant for personal use
 of your own subscription on your own machine; Anthropic's and OpenAI's consumer terms govern that use, and
 companies should run on API keys or a gateway.
 
