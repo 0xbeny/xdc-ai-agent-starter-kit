@@ -9,6 +9,8 @@ NODE_MAJOR=22
 say() { printf '\033[1;36m▸\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
+say "Checking prerequisites: git (required) · Node/pnpm (installed for you if missing) · Docker, Python 3 (optional)"
+
 ensure_node() { # pins Node to the version the kit is tested with (.node-version); Mastra's deps reject 24.1–24.10 and <22.22
   local want="$1"
   if command -v node >/dev/null && [ "$(node -v)" = "v$want" ]; then say "Node v$want"; return; fi
@@ -30,10 +32,24 @@ else
 fi
 cd "$DIR"
 ensure_node "$(tr -d '[:space:]' < .node-version)"
-if ! command -v pnpm >/dev/null; then
-  say "Enabling pnpm via corepack"
-  corepack enable && corepack prepare "$(node -p "require('./package.json').packageManager")" --activate
-fi
+ensure_pnpm() { # corepack when available (bundled with nvm/official Node), otherwise a global npm install; never assume it exists
+  local want; want=$(node -p "require('./package.json').packageManager") # e.g. pnpm@10.18.2
+  if command -v pnpm >/dev/null && [ "pnpm@$(pnpm -v)" = "$want" ]; then say "$want"; return; fi
+  if command -v corepack >/dev/null; then
+    say "Enabling $want via corepack"
+    corepack enable >/dev/null 2>&1 || true
+    corepack prepare "$want" --activate >/dev/null 2>&1 || true
+    hash -r
+  fi
+  if ! command -v pnpm >/dev/null; then
+    say "Installing $want with npm"
+    npm install -g "$want" >/dev/null 2>&1 || die "Could not install pnpm. Install it manually (https://pnpm.io/installation) and re-run."
+    hash -r
+  fi
+  command -v pnpm >/dev/null || die "pnpm is still not on PATH. Open a new terminal (or run: export PATH=\"\$HOME/.local/share/pnpm:\$PATH\") and re-run."
+  say "pnpm $(pnpm -v)"
+}
+ensure_pnpm
 say "Installing dependencies"; pnpm install --frozen-lockfile
 
 if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
