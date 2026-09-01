@@ -17,8 +17,8 @@ coverage/
 # local data — the live agent (seeded from templates/workspace on first run) and its state; updates never touch these
 *.db
 *.db-*
-data/
-workspace/
+/data/
+/workspace/
 
 # os / editor
 .DS_Store
