@@ -11,7 +11,7 @@ import { z } from 'zod'
 
 import { spawn } from 'node:child_process'
 
-import { openDashboard } from './dashboard.ts'
+import { runDashboardCommand } from './dashboard.ts'
 import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
 
 interface ApprovalLike {
@@ -100,7 +100,7 @@ export async function runChat(): Promise<void> {
       outputSchema: z.object({ ok: z.boolean(), message: z.string() }),
       execute: async () => {
         try {
-          await openDashboard(root)
+          await runDashboardCommand(root, ['--no-open'])
           return {
             ok: true,
             message:
@@ -367,7 +367,13 @@ export async function runChat(): Promise<void> {
       continue
     }
     if (cmd.kind === 'dashboard') {
-      await openDashboard(root)
+      rl.pause()
+      try {
+        await runDashboardCommand(root, cmd.args)
+      } catch (error) {
+        console.log(pc.red(`  ${error instanceof Error ? error.message : String(error)}`))
+      }
+      rl.resume()
       continue
     }
     if (cmd.kind === 'update') {
