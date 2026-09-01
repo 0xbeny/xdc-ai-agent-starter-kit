@@ -15,6 +15,7 @@ export type SlashCommand =
   | { kind: 'routines' }
   | { kind: 'retry' }
   | { kind: 'dashboard' }
+  | { kind: 'update' }
   | { kind: 'help' }
   | { kind: 'quit' }
   | { kind: 'unknown'; text: string }
@@ -60,6 +61,9 @@ export function parseSlash(line: string): SlashCommand {
     case 'dashboard':
     case 'ui':
       return { kind: 'dashboard' }
+    case 'update':
+    case 'upgrade':
+      return { kind: 'update' }
     case 'help':
     case '?':
       return { kind: 'help' }
