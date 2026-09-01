@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>XDC Agent Kit — your own agent, on your own machine, with a wallet</title>
+    <meta
+      name="description"
+      content="Open-source TypeScript agent starter kit: soul/memory workspace, any LLM (incl. your Claude Code subscription), human approvals, Telegram, 58 skills, sandbox, and an XDC wallet + pay-per-call marketplace by default."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <style>
+      :root {
+        --bg: #f5f8f7;
+        --surface: #fff;
+        --surface2: #edf3f2;
+        --ink: #15201e;
+        --ink2: #3c4a48;
+        --muted: #5d6d6b;
+        --line: #d6e0de;
+        --accent: #0e7c7b;
+        --accent-ink: #0b6160;
+        --tint: #d9edec;
+        --warn: #a8681a;
+        --good: #2e7d4f;
+        --code: #0f1514;
+        --code-ink: #dfe9e7;
+        --code-accent: #4fb8b3;
+        --serif: 'Bricolage Grotesque', system-ui, sans-serif;
+        --sans: 'IBM Plex Sans', system-ui, sans-serif;
+        --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1514;
+          --surface: #161e1d;
+          --surface2: #1d2725;
+          --ink: #e5edeb;
+          --ink2: #c2cecb;
+          --muted: #8fa09d;
+          --line: #2a3634;
+          --accent: #4fb8b3;
+          --accent-ink: #7cd0cb;
+          --tint: #173230;
+          --code: #0a0f0e;
+          --code-ink: #dfe9e7;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 17px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: var(--accent-ink);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 22px 0;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .brand {
+        font-family: var(--serif);
+        font-weight: 800;
+        font-size: 20px;
+        letter-spacing: -0.01em;
+      }
+      .brand span {
+        color: var(--accent);
+      }
+      nav .links {
+        display: flex;
+        gap: 22px;
+        font-size: 15px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-block;
+        background: var(--accent);
+        color: #fff;
+        padding: 12px 18px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .btn:hover {
+        background: var(--accent-ink);
+        text-decoration: none;
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--accent-ink);
+        border: 1px solid var(--line);
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 48px;
+        align-items: center;
+        padding: 56px 0 40px;
+      }
+      @media (max-width: 860px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+      }
+      h1 {
+        font-family: var(--serif);
+        font-weight: 800;
+        font-size: clamp(40px, 6vw, 66px);
+        line-height: 1;
+        letter-spacing: -0.03em;
+        margin: 12px 0 18px;
+        text-wrap: balance;
+      }
+      h1 em {
+        font-style: normal;
+        color: var(--accent);
+      }
+      .lede {
+        font-size: 19px;
+        color: var(--ink2);
+        max-width: 52ch;
+        margin: 0 0 26px;
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .install {
+        margin-top: 18px;
+        background: var(--code);
+        color: var(--code-ink);
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        overflow-x: auto;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+      .install code {
+        white-space: nowrap;
+      }
+      .install .c {
+        color: var(--code-accent);
+      }
+      .copy {
+        background: transparent;
+        border: 1px solid #2a3634;
+        color: var(--code-ink);
+        border-radius: 4px;
+        padding: 4px 10px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .term {
+        background: var(--code);
+        color: var(--code-ink);
+        border-radius: 10px;
+        padding: 18px 20px;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        line-height: 1.7;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+        min-height: 330px;
+      }
+      .term .bar {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .term .bar i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #2f3d3b;
+        display: block;
+      }
+      .term .you {
+        color: #8fd3cf;
+      }
+      .term .ag {
+        color: #e0a75a;
+      }
+      .term .dim {
+        color: #7d908d;
+      }
+      .term .ok {
+        color: #6cc493;
+      }
+      .term .line {
+        opacity: 0;
+        animation: show 0.01s forwards;
+      }
+      @keyframes show {
+        to {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .term .line:nth-child(2) {
+          animation-delay: 0.3s;
+        }
+        .term .line:nth-child(3) {
+          animation-delay: 1.2s;
+        }
+        .term .line:nth-child(4) {
+          animation-delay: 2.2s;
+        }
+        .term .line:nth-child(5) {
+          animation-delay: 3s;
+        }
+        .term .line:nth-child(6) {
+          animation-delay: 3.9s;
+        }
+        .term .line:nth-child(7) {
+          animation-delay: 4.6s;
+        }
+        .term .line:nth-child(8) {
+          animation-delay: 5.4s;
+        }
+        .term .line:nth-child(9) {
+          animation-delay: 6.4s;
+        }
+        .term .line:nth-child(10) {
+          animation-delay: 7.2s;
+        }
+      }
+      section {
+        padding: 56px 0;
+        border-top: 1px solid var(--line);
+      }
+      h2 {
+        font-family: var(--serif);
+        font-weight: 700;
+        font-size: clamp(28px, 3.4vw, 38px);
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin: 8px 0 14px;
+        text-wrap: balance;
+      }
+      .sub {
+        color: var(--ink2);
+        max-width: 60ch;
+        margin: 0 0 28px;
+      }
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      .g3 {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      }
+      .g2 {
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px 20px;
+      }
+      .card h3 {
+        font-family: var(--serif);
+        font-size: 19px;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      .card p {
+        margin: 0;
+        color: var(--ink2);
+        font-size: 15.5px;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr;
+        gap: 10px;
+        align-items: stretch;
+        margin: 22px 0;
+      }
+      @media (max-width: 860px) {
+        .flow {
+          grid-template-columns: 1fr;
+        }
+        .flow .arr {
+          transform: rotate(90deg);
+          justify-self: center;
+        }
+      }
+      .node {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .node.hi {
+        border-color: var(--accent);
+        background: var(--tint);
+      }
+      .node h4 {
+        margin: 0 0 8px;
+        font-family: var(--serif);
+        font-size: 16px;
+      }
+      .node ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 14px;
+        color: var(--ink2);
+      }
+      .arr {
+        font-family: var(--mono);
+        color: var(--muted);
+        align-self: center;
+        font-size: 22px;
+      }
+      .gate {
+        margin: 6px auto 0;
+        max-width: 640px;
+        text-align: center;
+        font-size: 14px;
+        color: var(--ink2);
+        border: 1px dashed var(--warn);
+        border-radius: 8px;
+        padding: 10px 14px;
+      }
+      .models {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0 0;
+      }
+      .chip {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        background: var(--surface2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 4px 9px;
+      }
+      .chip.hi {
+        background: var(--tint);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+      }
+      ol.steps {
+        counter-reset: s;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 12px;
+      }
+      ol.steps li {
+        counter-increment: s;
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 14px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px 18px;
+      }
+      ol.steps li::before {
+        content: counter(s);
+        font-family: var(--serif);
+        font-weight: 800;
+        font-size: 26px;
+        color: var(--accent);
+        line-height: 1;
+      }
+      ol.steps b {
+        display: block;
+        margin-bottom: 4px;
+      }
+      ol.steps p {
+        margin: 0;
+        color: var(--ink2);
+        font-size: 15.5px;
+      }
+      pre {
+        background: var(--code);
+        color: var(--code-ink);
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        overflow-x: auto;
+        margin: 10px 0 0;
+        line-height: 1.6;
+      }
+      pre .c {
+        color: var(--code-accent);
+      }
+      pre .d {
+        color: #7d908d;
+      }
+      .tbl {
+        overflow-x: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 15px;
+        min-width: 560px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      footer {
+        padding: 36px 0 60px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .tag {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 11px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 2px 8px;
+        color: var(--muted);
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <div class="brand">
+          XDC <span>Agent</span> Kit <span class="tag">v0.1 alpha · MIT</span>
+        </div>
+        <div class="links">
+          <a href="#how">How it works</a><a href="#install">Install</a
+          ><a href="#delegate">What it does</a><a href="#run">Run anywhere</a
+          ><a href="https://github.com/0xbeny/xdc-ai-agent-starter-kit">GitHub</a>
+        </div>
+      </nav>
+
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Open-source agent starter kit</p>
+          <h1>Your own agent. Your machine. <em>Its own wallet.</em></h1>
+          <p class="lede">
+            Install in one line on a Mac mini or a server, talk to it from your terminal, Telegram
+            or a dashboard, and let it work — with any LLM you like, 58 bundled skills, and a policy
+            that makes it <b>ask you before it spends or sends anything</b>.
+          </p>
+          <div class="cta">
+            <a class="btn" href="#install">Install in 3 minutes</a
+            ><a class="btn ghost" href="https://github.com/0xbeny/xdc-ai-agent-starter-kit"
+              >Read the code</a
+            >
+          </div>
+          <div class="install">
+            <code
+              ><span class="c">$</span> curl -fsSL
+              https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh
+              | bash</code
+            ><button
+              class="copy"
+              data-copy="curl -fsSL https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh | bash"
+            >
+              copy
+            </button>
+          </div>
+        </div>
+        <div class="term" aria-label="terminal demo">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="line"><span class="dim">$</span> xdc-agent</div>
+          <div class="line">
+            <span class="you">you ›</span> screen 0xfA29…8eb1 before we onboard them
+          </div>
+          <div class="line">
+            <span class="ag">agent ›</span> Found “XDC Regulated Compliance Agent · screen-address”
+            in the marketplace at 0.02 USDC. Below your 0.05 threshold — running it.
+          </div>
+          <div class="line">
+            <span class="ag">agent ›</span> <span class="ok">Clean.</span> No sanctions hits, risk
+            score 3/100, first seen 2024-11. tx 0x7a1c…
+          </div>
+          <div class="line">
+            <span class="you">you ›</span> send them the welcome pack and book a 20-min call
+            thursday
+          </div>
+          <div class="line">
+            <span class="ag">agent ›</span> Drafted the email and a Thursday 15:00 invite. Sending
+            leaves the workspace, so I need your approval: <span class="dim">a3f2c9d1</span>
+          </div>
+          <div class="line"><span class="you">you ›</span> /approve a3f2</div>
+          <div class="line">
+            <span class="ok"> approved a3f2c9d1</span>
+            <span class="dim">— sent · 0.02 USDC spent today of 2.00</span>
+          </div>
+        </div>
+      </header>
+
+      <section id="how">
+        <p class="eyebrow">How it works</p>
+        <h2>A folder is the agent. A policy is the leash.</h2>
+        <p class="sub">
+          Everything the agent <i>is</i> lives in plain files you can read and edit. Everything it
+          <i>does</i> passes through one payment policy and one approvals inbox — whichever surface
+          you're using.
+        </p>
+        <div class="flow">
+          <div class="node">
+            <h4>You</h4>
+            <ul>
+              <li>Terminal: <code>xdc-agent</code></li>
+              <li>Telegram bot</li>
+              <li>Dashboard</li>
+              <li>Routines (cron)</li>
+            </ul>
+          </div>
+          <div class="arr">→</div>
+          <div class="node hi">
+            <h4>The agent</h4>
+            <ul>
+              <li><code>SOUL.md</code> identity, <code>AGENTS.md</code> rules</li>
+              <li><code>MEMORY.md</code> + daily logs + semantic recall</li>
+              <li>58 skills, sandboxed <code>run_command</code></li>
+              <li>Sub-agents: researcher, treasurer</li>
+              <li>Any LLM (see below)</li>
+            </ul>
+          </div>
+          <div class="arr">→</div>
+          <div class="node">
+            <h4>Tools</h4>
+            <ul>
+              <li>XDC AI wallet + 100+ pay-per-call APIs</li>
+              <li>Slack, Gmail, Drive, Calendar, Notion, GitHub…</li>
+              <li>Isolated shell (Seatbelt / bwrap)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="gate">
+          ⚑ Payment policy + approvals: cheap calls run alone · above your threshold, every
+          transfer, every write, every send → waits for you (terminal, Telegram or dashboard) · caps
+          enforced in code, not by the model
+        </div>
+      </section>
+
+      <section>
+        <p class="eyebrow">Any model</p>
+        <h2>Bring the LLM you already pay for.</h2>
+        <p class="sub">
+          One line in <code>.env</code>. API keys, local models, or the login of a coding CLI you
+          already use.
+        </p>
+        <div class="models">
+          <span class="chip hi">claude-code/sonnet · your Claude subscription</span
+          ><span class="chip hi">codex/gpt-5.5 · your ChatGPT subscription</span>
+          <span class="chip">anthropic/claude-sonnet-4-6</span
+          ><span class="chip">openai/gpt-5.6</span><span class="chip">xai/grok-4.3</span
+          ><span class="chip">moonshot/kimi-k2.7</span
+          ><span class="chip">google/gemini-2.5-pro</span><span class="chip">openrouter/…</span
+          ><span class="chip">ollama/qwen3:8b</span
+          ><span class="chip">custom/…@http://gpu-box:8000/v1</span>
+        </div>
+      </section>
+
+      <section id="delegate">
+        <p class="eyebrow">What people build on it</p>
+        <h2>Delegate the boring, keep the decisions.</h2>
+        <div class="grid g3">
+          <div class="card">
+            <h3>Treasury & DeFi ops</h3>
+            <p>
+              Balances, swaps, lending — every action policy-checked; transfers always need a human.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Compliance & onboarding</h3>
+            <p>
+              Screen addresses and entities via pay-per-call APIs, draft the welcome mail, log to
+              Notion.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Workspace assistant</h3>
+            <p>
+              Triage Gmail, schedule in Calendar, find files in Drive, brief you every morning on
+              Telegram.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Research & monitoring</h3>
+            <p>Routines that watch markets, masternodes or competitors and report with sources.</p>
+          </div>
+          <div class="card">
+            <h3>Documents</h3>
+            <p>
+              Bundled docx / pdf / xlsx / powerpoint skills run in the sandbox: read, create, merge,
+              fill.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Sell your own API</h3>
+            <p>
+              List an endpoint on the XDC AI marketplace and let other agents pay you per call in
+              USDC.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="install">
+        <p class="eyebrow">Install</p>
+        <h2>Three minutes on a Mac mini, a Linux box, or your laptop.</h2>
+        <p class="sub">
+          No Docker required. Needs git; Node and pnpm are installed for you if missing.
+        </p>
+        <ol class="steps">
+          <li>
+            <div>
+              <b>Run the installer</b>
+              <p>
+                Clones to <code>~/xdc-ai-agent-starter-kit</code>, pins Node, installs dependencies,
+                puts <code>xdc-agent</code> on your PATH, then starts the setup wizard.
+              </p>
+              <pre><span class="c">$</span> curl -fsSL https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh | bash</pre>
+            </div>
+          </li>
+          <li>
+            <div>
+              <b>Answer the wizard</b>
+              <p>
+                Model & key (or Claude Code) → SQLite or Postgres → link your XDC AI wallet (a code
+                you approve in any browser) → spending caps → connectors & Telegram. On macOS it
+                offers to run at login.
+              </p>
+            </div>
+          </li>
+          <li>
+            <div>
+              <b>Talk to it</b>
+              <p>New terminal, then:</p>
+              <pre><span class="c">$</span> xdc-agent            <span class="d"># chat — type / for commands</span>
+<span class="c">$</span> xdc-agent dashboard  <span class="d"># start + open the UI (prints the ssh -L command over SSH)</span>
+<span class="c">$</span> xdc-agent telegram   <span class="d"># connect a bot, get the pairing code</span>
+<span class="c">$</span> xdc-agent update     <span class="d"># update the kit — your workspace, data and .env are never touched</span></pre>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section id="run">
+        <p class="eyebrow">Run it anywhere</p>
+        <h2>One repo, four ways to host.</h2>
+        <div class="tbl">
+          <table>
+            <tr>
+              <th>Where</th>
+              <th>How</th>
+              <th>Needs</th>
+            </tr>
+            <tr>
+              <td>Mac mini / home server</td>
+              <td>Native: <code>scripts/serve.sh</code> under launchd (installer offers it)</td>
+              <td>Nothing else — SQLite, Seatbelt sandbox</td>
+            </tr>
+            <tr>
+              <td>Linux server / VPS</td>
+              <td>systemd unit, or Docker Compose (Postgres, Redis, agent, dashboard, Telegram)</td>
+              <td>Docker optional; Coolify / Dokploy templates</td>
+            </tr>
+            <tr>
+              <td>Cloud</td>
+              <td>Agent on Fly.io, dashboard on Vercel</td>
+              <td>Recipes in <code>deploy/</code></td>
+            </tr>
+            <tr>
+              <td>Hosted (coming)</td>
+              <td>Same image per customer agent, billed in USDC from the agent's own wallet</td>
+              <td>Leave any time: your agent is three folders</td>
+            </tr>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <p class="eyebrow">Security defaults</p>
+        <h2>Built to be trusted with a wallet.</h2>
+        <div class="grid g2">
+          <div class="card">
+            <h3>Caps in code</h3>
+            <p>
+              Auto-approve threshold, per-call max and a daily cap are enforced before any paid
+              call; the model can't talk its way past them.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Approvals everywhere</h3>
+            <p>
+              One inbox — dashboard, Telegram buttons or <code>/approve</code> in the terminal.
+              Approvals are single-use and bound to the exact arguments.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Untrusted content stays data</h3>
+            <p>
+              Email, docs, channels and paid API results can never trigger a send or a payment
+              without you.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Secrets stay local</h3>
+            <p>
+              <code>.env</code> and token files (0600) never leave the machine; vault references
+              (<code>op://</code>, <code>bws://</code>) supported; logs are redacted.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Sandboxed execution</h3>
+            <p>
+              Commands run in a scratch dir with Seatbelt (macOS) or Bubblewrap (Linux), no network
+              by default, destructive commands refused.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Updates can't touch you</h3>
+            <p>
+              Identity, memory, tokens, ledger and settings are outside git;
+              <code>xdc-agent update</code> fast-forwards code only.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div>
+          MIT ·
+          <a href="https://github.com/0xbeny/xdc-ai-agent-starter-kit"
+            >github.com/0xbeny/xdc-ai-agent-starter-kit</a
+          >
+          · built on <a href="https://mastra.ai">Mastra</a> · wallet & marketplace by
+          <a href="https://xdcai.tech">xdcai.tech</a>
+        </div>
+        <div>XDC mainnet only · v0.1 alpha — start with small caps</div>
+      </footer>
+    </div>
+    <script>
+      document.querySelectorAll('.copy').forEach((b) =>
+        b.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(b.dataset.copy)
+            b.textContent = 'copied'
+            setTimeout(() => (b.textContent = 'copy'), 1500)
+          } catch {
+            b.textContent = 'select & copy'
+          }
+        }),
+      )
+    </script>
+  </body>
+</html>
