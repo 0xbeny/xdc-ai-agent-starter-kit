@@ -71,10 +71,15 @@ export PATH="\$HOME/.local/share/pnpm:\$PATH"
 cd "$DIR" && exec pnpm --silent exec tsx apps/cli/src/bin.ts "\$@"
 EOS
   chmod +x "$bin/xdc-agent"
-  case ":$PATH:" in *":$bin:"*) ;; *)
-    for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do [ -f "$rc" ] && ! grep -q '.local/bin' "$rc" && printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"; done
-    say "Added ~/.local/bin to PATH in your shell rc — open a new terminal or run: export PATH=\"\$HOME/.local/bin:\$PATH\"";;
-  esac
+  # Put ~/.local/bin on PATH for every shell flavour: zsh login (SSH) reads .zprofile, interactive reads .zshrc;
+  # bash reads .bash_profile / .bashrc. Files are created if missing (fresh machines often have none).
+  local line='export PATH="$HOME/.local/bin:$PATH"'
+  local rcs="$HOME/.zprofile $HOME/.zshrc $HOME/.bash_profile $HOME/.bashrc"
+  for rc in $rcs; do
+    [ -f "$rc" ] || touch "$rc"
+    grep -qF '.local/bin' "$rc" || printf '\n# xdc-ai-agent-starter-kit\n%s\n' "$line" >> "$rc"
+  done
+  case ":$PATH:" in *":$bin:"*) ;; *) say "PATH updated in .zprofile/.zshrc/.bash_profile/.bashrc — open a new terminal, or run now:  $line";; esac
   say "Installed the ${bin}/xdc-agent command"
 }
 install_shim
@@ -101,5 +106,5 @@ if [ "$(uname)" = "Darwin" ] && [ "$INTERACTIVE" = 1 ]; then
     exit 0
   fi
 fi
-say "Chat now:         xdc-agent"
+say "Chat now:         xdc-agent        (if not found: export PATH=\"\$HOME/.local/bin:\$PATH\"  or  ~/.local/bin/xdc-agent)"
 say "Dashboard:        xdc-agent serve   → http://localhost:3000   (or install the login service: see deploy/launchd)"
