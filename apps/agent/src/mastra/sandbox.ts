@@ -74,59 +74,127 @@ export interface RunResult {
   isolation: string
 }
 
-/** Runs one shell command in the sandbox with the command policy applied first. */
+const BACKEND_FAILURE =
+  /bwrap:|sandbox-exec:|unshare|user namespaces?|setting up uid map|Operation not permitted|No permissions to create new namespace|loopback|seatbelt/i
+
+/**
+ * Owns the sandbox for the process. The first real command doubles as a probe: if the isolation backend
+ * itself cannot start (GitHub runners, locked-down containers, Macs with unusual policies), the runner
+ * rebuilds without kernel isolation, warns once, and continues — the deny list and scratch dir still apply.
+ */
+export class SandboxRunner {
+  private sandbox: LocalSandbox
+  isolation: Isolation
+  readonly dir: string
+  fallbackReason: string | undefined
+  private probed = false
+  private readonly options: SandboxOptions
+
+  constructor(options: SandboxOptions) {
+    this.options = options
+    const built = createLocalSandbox(options)
+    this.sandbox = built.sandbox
+    this.isolation = built.isolation
+    this.dir = built.dir
+    this.fallbackReason = built.fallbackReason
+  }
+
+  async run(command: string, timeoutMs = 60_000): Promise<RunResult> {
+    const verdict = classifyCommand(command)
+    if (!verdict.ok)
+      return {
+        ok: false,
+        exitCode: null,
+        stdout: '',
+        stderr: '',
+        denied: verdict.reason,
+        isolation: this.isolation,
+      }
+    if (!this.probed) {
+      this.probed = true
+      if (this.isolation !== 'none') {
+        const probe = await this.exec('echo __kit_probe__', 15_000).catch((e: unknown) => ({
+          ok: false,
+          exitCode: null,
+          stdout: '',
+          stderr: e instanceof Error ? e.message : String(e),
+          isolation: this.isolation,
+        }))
+        if (!probe.ok || !probe.stdout.includes('__kit_probe__')) {
+          if (BACKEND_FAILURE.test(probe.stderr) || probe.exitCode !== 0) {
+            const reason = probe.stderr.trim().split('\n')[0] || `probe exited ${probe.exitCode}`
+            console.warn(
+              `[sandbox] ${this.isolation} isolation cannot start here (${reason}); running commands WITHOUT kernel isolation`,
+            )
+            await this.sandbox.destroy().catch(() => undefined)
+            this.sandbox = createLocalSandbox(this.options, 'none').sandbox
+            this.isolation = 'none'
+            this.fallbackReason = reason
+          }
+        }
+      }
+    }
+    return this.exec(command, timeoutMs)
+  }
+
+  private async exec(command: string, timeoutMs: number): Promise<RunResult> {
+    await this.sandbox.ensureRunning()
+    const processes = this.sandbox.processes
+    if (!processes) throw new Error('sandbox has no process manager')
+    let stdout = ''
+    let stderr = ''
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const handle = await processes.spawn(command, {
+        onStdout: (d: string) => {
+          stdout += d
+        },
+        onStderr: (d: string) => {
+          stderr += d
+        },
+      })
+      const result = (await handle.wait({ abortSignal: controller.signal })) as {
+        exitCode?: number | null
+        stdout?: string
+        stderr?: string
+      }
+      if (!stdout && result.stdout) stdout = result.stdout
+      if (!stderr && result.stderr) stderr = result.stderr
+      const exitCode = result.exitCode ?? null
+      return {
+        ok: exitCode === 0,
+        exitCode,
+        stdout: clipOutput(stdout),
+        stderr: clipOutput(stderr),
+        isolation: this.isolation,
+      }
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  destroy(): Promise<void> {
+    return this.sandbox.destroy()
+  }
+}
+
+/** Convenience for one-off use (tests, scripts). */
 export async function runInSandbox(
-  sandbox: LocalSandbox,
-  isolation: string,
+  runner: SandboxRunner,
   command: string,
   timeoutMs = 60_000,
 ): Promise<RunResult> {
-  const verdict = classifyCommand(command)
-  if (!verdict.ok)
-    return { ok: false, exitCode: null, stdout: '', stderr: '', denied: verdict.reason, isolation }
-  await sandbox.ensureRunning()
-  const processes = sandbox.processes
-  if (!processes) throw new Error('sandbox has no process manager')
-  let stdout = ''
-  let stderr = ''
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const handle = await processes.spawn(command, {
-      onStdout: (d: string) => {
-        stdout += d
-      },
-      onStderr: (d: string) => {
-        stderr += d
-      },
-    })
-    const result = (await handle.wait({ abortSignal: controller.signal })) as {
-      exitCode?: number | null
-      stdout?: string
-      stderr?: string
-    }
-    if (!stdout && result.stdout) stdout = result.stdout
-    if (!stderr && result.stderr) stderr = result.stderr
-    const exitCode = result.exitCode ?? null
-    return {
-      ok: exitCode === 0,
-      exitCode,
-      stdout: clipOutput(stdout),
-      stderr: clipOutput(stderr),
-      isolation,
-    }
-  } finally {
-    clearTimeout(timer)
-  }
+  return runner.run(command, timeoutMs)
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types -- Mastra infers the Tool generics
 export function createSandboxTools(options: SandboxOptions) {
-  const { sandbox, dir, isolation, fallbackReason } = createLocalSandbox(options)
+  const runner = new SandboxRunner(options)
   const runCommand = createTool({
     id: 'run_command',
     description:
-      `Run a shell command in a scratch sandbox (${isolation === 'none' ? 'NO kernel isolation on this host' : `${isolation} isolation`}, working dir ${dir}, network ${options.allowNetwork ? 'allowed' : 'blocked'}). ` +
+      `Run a shell command in a scratch sandbox (working dir ${runner.dir}, network ${options.allowNetwork ? 'allowed' : 'blocked'}; isolation is reported in each result). ` +
       'Use it for calculations, data wrangling, scripts and file processing. Destructive or exfiltrating commands are refused; ask the human for those. Output is truncated.',
     inputSchema: z.object({
       command: z.string().describe('POSIX shell command line'),
@@ -141,12 +209,14 @@ export function createSandboxTools(options: SandboxOptions) {
       isolation: z.string(),
     }),
     execute: async ({ command, timeoutSeconds }) =>
-      runInSandbox(sandbox, isolation, command, (timeoutSeconds ?? 60) * 1000),
+      runner.run(command, (timeoutSeconds ?? 60) * 1000),
   })
   return {
     tools: { run_command: runCommand },
-    isolation,
-    dir,
-    ...(fallbackReason ? { fallbackReason } : {}),
+    runner,
+    get isolation() {
+      return runner.isolation
+    },
+    dir: runner.dir,
   }
 }

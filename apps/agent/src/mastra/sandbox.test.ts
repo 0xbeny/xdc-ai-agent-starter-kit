@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { createLocalSandbox, isolationFor, runInSandbox, sandboxMode } from './sandbox.ts'
+import { createLocalSandbox, isolationFor, SandboxRunner, sandboxMode } from './sandbox.ts'
 
 describe('sandbox config', () => {
   it('is off unless SANDBOX=local', () => {
@@ -37,17 +37,18 @@ describe('createLocalSandbox fallback', () => {
 describe.runIf(native)('runInSandbox (live)', () => {
   it('runs a harmless command inside the scratch dir and refuses a denied one without spawning', async () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'sbx-'))
-    const { sandbox, isolation } = createLocalSandbox({ dataDir })
+    const runner = new SandboxRunner({ dataDir })
     try {
-      const ok = await runInSandbox(sandbox, isolation, 'echo hello && pwd')
-      expect(ok.ok).toBe(true)
+      const ok = await runner.run('echo hello && pwd')
+      expect(ok.ok, `stderr: ${ok.stderr}`).toBe(true)
       expect(ok.stdout).toContain('hello')
       expect(ok.stdout).toContain('sandbox')
-      const denied = await runInSandbox(sandbox, isolation, 'sudo rm -rf /')
+      expect(['seatbelt', 'bwrap', 'none']).toContain(ok.isolation)
+      const denied = await runner.run('sudo rm -rf /')
       expect(denied.ok).toBe(false)
       expect(denied.denied).toMatch(/privilege/)
     } finally {
-      await sandbox.destroy().catch(() => undefined)
+      await runner.destroy().catch(() => undefined)
     }
   }, 60_000)
 })
