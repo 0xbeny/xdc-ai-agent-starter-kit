@@ -111,6 +111,9 @@ importers:
       '@xdc-ai/models':
         specifier: workspace:*
         version: link:../../packages/models
+      '@xdc-ai/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
       '@xdc-ai/workspace':
         specifier: workspace:*
         version: link:../../packages/workspace

@@ -2,6 +2,8 @@
  * Telegram gateway: `pnpm gateway`. Runs beside the agent server and shares its data dir,
  * so approvals decided here are the same approvals the dashboard shows.
  */
+import './env.ts'
+
 import { join } from 'node:path'
 
 import { AccessControl, createTelegramBot, parseIdList } from '@xdc-ai/gateway'

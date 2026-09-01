@@ -68,7 +68,10 @@ install_shim() { # `xdc-agent` on PATH → chat / setup / login / serve / update
 #!/usr/bin/env bash
 export NVM_DIR="\${NVM_DIR:-\$HOME/.nvm}"; [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh" && nvm use "\$(tr -d '[:space:]' < "$DIR/.node-version")" >/dev/null 2>&1
 export PATH="\$HOME/.local/share/pnpm:\$PATH"
-cd "$DIR" && exec pnpm --silent exec tsx apps/cli/src/bin.ts "\$@"
+command -v pnpm >/dev/null 2>&1 || { echo "xdc-agent: pnpm not found — re-run the installer: curl -fsSL https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh | bash" >&2; exit 127; }
+[ -d "$DIR/node_modules" ] || { echo "xdc-agent: dependencies missing in $DIR — run: cd $DIR && pnpm install" >&2; exit 1; }
+# tsx lives in apps/cli, so run from there (bin.ts finds the repo root by itself)
+cd "$DIR/apps/cli" && exec pnpm exec tsx src/bin.ts "\$@"
 EOS
   chmod +x "$bin/xdc-agent"
   # Put ~/.local/bin on PATH for every shell flavour: zsh login (SSH) reads .zprofile, interactive reads .zshrc;

@@ -2,6 +2,7 @@
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
+import { loadDotEnv } from '@xdc-ai/secrets'
 import { FileAuthStore } from '@xdc-ai/xdcai'
 
 import { spawn } from 'node:child_process'
@@ -20,6 +21,7 @@ function findRoot(start: string): string {
 }
 
 const root = findRoot(process.cwd())
+loadDotEnv(join(root, '.env')) // tsx does not load .env; services and `mastra dev` do
 const paths = {
   root,
   envFile: join(root, '.env'),
