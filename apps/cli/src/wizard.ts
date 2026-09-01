@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -187,6 +188,16 @@ export async function runSetup(paths: WizardPaths): Promise<void> {
       ? current.DATABASE_URL || 'postgresql://agent:agent@localhost:5432/agent'
       : ''
 
+  // 3b. dashboard access — the UI may be reached over the LAN or a tunnel, so protect it by default
+  if (!current.KIT_API_TOKEN) updates.KIT_API_TOKEN = randomBytes(24).toString('hex')
+  const pw = await p.password({
+    message: current.DASHBOARD_PASSWORD
+      ? 'Dashboard password (blank = keep the current one)'
+      : 'Dashboard password (blank = open, localhost only — not recommended if others can reach this machine)',
+  })
+  bail(pw)
+  if ((pw as string).trim()) updates.DASHBOARD_PASSWORD = (pw as string).trim()
+
   // 4. XDC AI wallet
   const store = new FileAuthStore(join(paths.dataDir, 'xdcai-auth.json'))
   const connected = hasWalletSession(store)
@@ -271,6 +282,12 @@ export async function runSetup(paths: WizardPaths): Promise<void> {
   p.note(
     [
       `${pc.bold('.env')} written (secrets stay local; it is git-ignored).`,
+      updates.DASHBOARD_PASSWORD || current.DASHBOARD_PASSWORD
+        ? 'Dashboard is password-protected.'
+        : pc.yellow(
+            'Dashboard has NO password — keep it on localhost or run setup again to set one.',
+          ),
+      `Reach the UI:         ${pc.cyan('ssh -L 3000:localhost:3000 <user>@<this-machine>')} → http://localhost:3000`,
       storage === 'postgres'
         ? `Start the database:   ${pc.cyan('pnpm db:up')}`
         : 'Storage: local SQLite under ./data',
