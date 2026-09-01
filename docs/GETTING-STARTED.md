@@ -62,6 +62,12 @@ From a checkout without the shim: `pnpm chat`.
 
 ## 3a. Reach the dashboard
 
+```
+xdc-agent dashboard
+```
+
+Starts the service if it isn't running, waits for it, and opens http://localhost:3000 — or, when you are on
+SSH, prints the exact `ssh -L 3000:localhost:3000 user@machine` command to run from your laptop.
 The service (or `xdc-agent serve`) serves the dashboard on port 3000 and the agent API on 4111.
 
 - **From your laptop**: `ssh -L 3000:localhost:3000 <user>@<machine>` → http://localhost:3000
@@ -105,8 +111,12 @@ today's spend against the cap, and a searchable marketplace of 100+ pay-per-call
 
 ## 4b. Talk to it from Telegram
 
-1. Create a bot with [@BotFather](https://t.me/BotFather) and put the token in `.env` as `TELEGRAM_BOT_TOKEN`.
-2. `pnpm gateway` — the log prints a 6-digit **pairing code**.
+```
+xdc-agent telegram
+```
+
+1. It walks you through [@BotFather](https://t.me/BotFather) → `/newbot`, validates the token with Telegram, saves it to `.env`.
+2. It (re)starts the gateway and prints a 6-digit **pairing code** (or where to find it in the logs).
 3. In Telegram, open your bot and send `/pair 123456`. The first person to pair becomes admin.
 4. Delegate tasks by message. Admins receive every approval request with **Approve / Deny** buttons
    and can list them with `/approvals`. Decisions made in Telegram and in the dashboard are the same

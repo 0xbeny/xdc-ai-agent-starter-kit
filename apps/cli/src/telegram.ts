@@ -1,0 +1,102 @@
+import { spawn } from 'node:child_process'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import * as p from '@clack/prompts'
+import pc from 'picocolors'
+
+import { mergeEnv, parseEnv } from './env-file.ts'
+import { ensureServiceRunning, launchdLoaded, readLogTail, say } from './service.ts'
+
+export async function validateBotToken(
+  token: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<{ ok: boolean; username?: string; error?: string }> {
+  try {
+    const res = await fetchFn(`https://api.telegram.org/bot${token}/getMe`, {
+      signal: AbortSignal.timeout(10_000),
+    })
+    const body = (await res.json()) as {
+      ok?: boolean
+      result?: { username?: string }
+      description?: string
+    }
+    if (!body.ok) return { ok: false, error: body.description ?? `HTTP ${res.status}` }
+    return { ok: true, ...(body.result?.username ? { username: body.result.username } : {}) }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+export function findPairingCode(log: string): string | undefined {
+  const m = [...log.matchAll(/pairing code: (\d{6})/g)].at(-1)
+  return m?.[1]
+}
+
+/** `xdc-agent telegram`: save the bot token, (re)start the gateway, print the pairing code. */
+export async function connectTelegram(paths: { root: string; envFile: string }): Promise<void> {
+  p.intro(pc.bgCyan(pc.black(' xdc-agent · telegram ')))
+  const existingText = existsSync(paths.envFile) ? readFileSync(paths.envFile, 'utf8') : ''
+  const current = parseEnv(existingText)
+  p.note(
+    [
+      '1. Open @BotFather in Telegram → /newbot → follow the prompts',
+      '2. Copy the token it gives you (looks like 123456:ABC-…)',
+      '3. Paste it below',
+    ].join('\n'),
+    'Create a bot',
+  )
+  const token = await p.password({
+    message: current.TELEGRAM_BOT_TOKEN ? 'Bot token (blank = keep the saved one)' : 'Bot token',
+    validate: (v) => (current.TELEGRAM_BOT_TOKEN || v?.trim() ? undefined : 'Token required'),
+  })
+  if (p.isCancel(token)) return p.cancel('Cancelled')
+  const value = (token as string).trim() || current.TELEGRAM_BOT_TOKEN || ''
+  const s = p.spinner()
+  s.start('Checking the token with Telegram…')
+  const check = await validateBotToken(value)
+  if (!check.ok) {
+    s.stop(pc.red(`Telegram rejected it: ${check.error}`))
+    return p.outro('Nothing saved. Get a fresh token from @BotFather and try again.')
+  }
+  s.stop(`Bot ${pc.bold(`@${check.username ?? 'unknown'}`)} is valid`)
+  writeFileSync(paths.envFile, mergeEnv(existingText, { TELEGRAM_BOT_TOKEN: value }))
+  say('Token saved to .env')
+
+  const before = readLogTail(paths.root, 400)
+  if (launchdLoaded()) {
+    ensureServiceRunning(paths.root, true)
+    s.start('Restarting the service so the gateway starts…')
+    let code: string | undefined
+    for (let i = 0; i < 60 && !code; i++) {
+      await new Promise((r) => setTimeout(r, 2000))
+      const now = readLogTail(paths.root, 400)
+      if (now !== before)
+        code = findPairingCode(
+          now.slice(before.length > 0 ? Math.max(0, now.lastIndexOf(before.slice(-200))) : 0),
+        )
+    }
+    s.stop(code ? 'Gateway is up' : 'Service restarted (pairing code not seen in logs yet)')
+    finish(check.username, code, paths.root)
+    return
+  }
+  s.stop('No login service — running the gateway in the foreground (Ctrl+C stops it)')
+  finish(check.username, undefined, paths.root)
+  const child = spawn('pnpm', ['--filter', '@xdc-ai/agent', 'gateway'], {
+    cwd: paths.root,
+    stdio: 'inherit',
+  })
+  await new Promise<void>((resolve) => child.on('exit', () => resolve()))
+}
+
+function finish(username: string | undefined, code: string | undefined, root: string): void {
+  const lines = [
+    `Open ${pc.bold(`https://t.me/${username ?? 'your_bot'}`)} and send ${pc.cyan(code ? `/pair ${code}` : '/pair <code>')}`,
+    code
+      ? 'The first person to pair becomes admin and receives approval requests.'
+      : `The 6-digit code is printed by the gateway: ${pc.dim(`grep "pairing code" ${join(root, 'data', 'service.out.log')}`)}`,
+    'Then just message the bot. Admins: /approvals lists what is waiting.',
+  ]
+  p.note(lines.join('\n'), 'Pair your Telegram')
+  p.outro('Done.')
+}

@@ -8,6 +8,8 @@ import { FileAuthStore } from '@xdc-ai/xdcai'
 import { spawn } from 'node:child_process'
 
 import { runChat } from './chat.ts'
+import { openDashboard } from './dashboard.ts'
+import { connectTelegram } from './telegram.ts'
 import { login, runSetup } from './wizard.ts'
 
 function findRoot(start: string): string {
@@ -61,6 +63,15 @@ switch (command) {
   case 'login':
     await login(new FileAuthStore(join(paths.dataDir, 'xdcai-auth.json')))
     break
+  case 'dashboard':
+  case 'ui':
+    await ensureConfigured()
+    await openDashboard(root)
+    break
+  case 'telegram':
+    await ensureConfigured()
+    await connectTelegram(paths)
+    break
   case 'serve':
     process.exit(await script('serve.sh'))
     break
@@ -76,9 +87,12 @@ switch (command) {
   case '-h':
     console.log(`xdc-agent — your agent from the terminal
 
-  xdc-agent            chat with the agent (default)
+  xdc-agent            chat with the agent (default) — type / for commands
+  xdc-agent dashboard  start the UI if needed and open it (or print the SSH tunnel command)
+  xdc-agent telegram   connect a Telegram bot and get the pairing code
   xdc-agent setup      configure model, wallet, caps, connectors
   xdc-agent login      link the XDC AI wallet again
+  xdc-agent status     one-screen summary
   xdc-agent serve      run agent + dashboard (+ Telegram) in the foreground
   xdc-agent update     update the kit from the original repo (your data is untouched)
   xdc-agent help`)
