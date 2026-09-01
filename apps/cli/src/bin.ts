@@ -39,8 +39,20 @@ const script = (name: string): Promise<number> =>
     child.on('exit', (code) => resolve(code ?? 1))
   })
 
+async function ensureConfigured(): Promise<void> {
+  if (process.env.MODEL_CHAT?.trim()) return
+  console.log('No model configured yet (MODEL_CHAT missing in .env) — starting setup first.\n')
+  await runSetup(paths)
+  loadDotEnv(paths.envFile, process.env)
+  if (!process.env.MODEL_CHAT?.trim()) {
+    console.error('Setup did not save a model. Run `xdc-agent setup` again when ready.')
+    process.exit(1)
+  }
+}
+
 switch (command) {
   case 'chat':
+    await ensureConfigured()
     await runChat()
     break
   case 'setup':
@@ -56,8 +68,8 @@ switch (command) {
     process.exit(await script('update.sh'))
     break
   case 'status':
-    process.argv.push('/status')
-    await runChat()
+    await ensureConfigured()
+    await (await import('./chat.ts')).printStatus()
     break
   case 'help':
   case '--help':
