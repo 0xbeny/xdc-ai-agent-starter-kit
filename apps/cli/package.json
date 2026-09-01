@@ -11,7 +11,8 @@
     "setup": "tsx src/bin.ts setup",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "login": "tsx src/bin.ts login"
+    "login": "tsx src/bin.ts login",
+    "chat": "tsx src/bin.ts chat"
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",

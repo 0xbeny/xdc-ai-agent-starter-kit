@@ -27,7 +27,8 @@
     "gateway": "pnpm --filter @xdc-ai/agent gateway",
     "update:kit": "bash scripts/update.sh",
     "serve": "bash scripts/serve.sh",
-    "check:ignored": "bash scripts/check-ignored.sh"
+    "check:ignored": "bash scripts/check-ignored.sh",
+    "chat": "pnpm --filter @xdc-ai/cli chat"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

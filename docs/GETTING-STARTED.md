@@ -23,8 +23,11 @@ pnpm install
 
 ## 2. Set up (interactive)
 
+The installer runs this for you at the end (it reads from your terminal even when piped through `bash`).
+To run it again:
+
 ```bash
-pnpm setup
+xdc-agent setup     # or: pnpm setup
 ```
 
 The wizard asks, in order:
@@ -41,7 +44,23 @@ The wizard asks, in order:
 
 It writes `.env` (git-ignored) and can be re-run any time. `pnpm login` repeats only the wallet step.
 
-## 3. Run
+## 3. Chat from the terminal
+
+The installer puts an `xdc-agent` command on your PATH (`~/.local/bin`). Like `hermes`, running it with
+no arguments drops you into a chat with your agent — same memory, same approvals as the dashboard:
+
+```
+xdc-agent                 # chat REPL
+  /new  /approvals  /approve <id>  /deny <id>  /status  /quit
+xdc-agent setup           # re-run the wizard
+xdc-agent login           # link the wallet again
+xdc-agent serve           # agent API + dashboard (+ Telegram) in the foreground
+xdc-agent update          # pull the latest kit; your workspace/, data/ and .env are untouched
+```
+
+From a checkout without the shim: `pnpm chat`.
+
+## 3b. Run the server and dashboard
 
 ```bash
 pnpm db:up            # Postgres 17 + pgvector, Redis (skip if you chose SQLite)

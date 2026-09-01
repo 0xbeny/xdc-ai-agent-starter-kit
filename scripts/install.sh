@@ -58,18 +58,39 @@ else
   say "No Docker — that's fine: choose SQLite in setup; nothing else is required"
 fi
 
-if [ -t 0 ]; then
+# `curl | bash` leaves stdin as the pipe; a real terminal is still reachable through /dev/tty (this is what Hermes does too)
+INTERACTIVE=0
+if [ -t 1 ] && { : </dev/tty; } 2>/dev/null; then INTERACTIVE=1; fi
+
+install_shim() { # `xdc-agent` on PATH → chat / setup / login / serve / update
+  local bin="$HOME/.local/bin"; mkdir -p "$bin"
+  cat > "$bin/xdc-agent" <<EOS
+#!/usr/bin/env bash
+export NVM_DIR="\${NVM_DIR:-\$HOME/.nvm}"; [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh" && nvm use "\$(tr -d '[:space:]' < "$DIR/.node-version")" >/dev/null 2>&1
+export PATH="\$HOME/.local/share/pnpm:\$PATH"
+cd "$DIR" && exec pnpm --silent exec tsx apps/cli/src/bin.ts "\$@"
+EOS
+  chmod +x "$bin/xdc-agent"
+  case ":$PATH:" in *":$bin:"*) ;; *)
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do [ -f "$rc" ] && ! grep -q '.local/bin' "$rc" && printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"; done
+    say "Added ~/.local/bin to PATH in your shell rc — open a new terminal or run: export PATH=\"\$HOME/.local/bin:\$PATH\"";;
+  esac
+  say "Installed the ${bin}/xdc-agent command"
+}
+install_shim
+
+if [ "$INTERACTIVE" = 1 ]; then
   say "Starting setup"; pnpm setup </dev/tty
 else
-  say "Non-interactive shell: run  cd $DIR && pnpm setup  to configure the agent"
+  say "No terminal attached: run  xdc-agent setup  to configure the agent"
 fi
 
-if [ -t 0 ] && command -v python3 >/dev/null; then
+if [ "$INTERACTIVE" = 1 ] && command -v python3 >/dev/null; then
   read -r -p "Install Python libraries used by the bundled document skills (docx, pdf, xlsx, pptx)? [Y/n] " py </dev/tty || py=y
   case "${py:-y}" in n|N) ;; *) python3 -m pip install --quiet --user python-docx pypdf pdfplumber openpyxl python-pptx reportlab 2>/dev/null && say "Python document libraries installed" || say "Could not install Python libraries — the skills will tell you what to install when used";; esac
 fi
 
-if [ "$(uname)" = "Darwin" ] && [ -t 0 ]; then
+if [ "$(uname)" = "Darwin" ] && [ "$INTERACTIVE" = 1 ]; then
   printf '\n'; read -r -p "Install as a background service that starts at login (launchd)? [y/N] " yn </dev/tty || yn=n
   if [ "${yn:-n}" = "y" ] || [ "${yn:-n}" = "Y" ]; then
     mkdir -p "$HOME/Library/LaunchAgents" data
@@ -80,5 +101,5 @@ if [ "$(uname)" = "Darwin" ] && [ -t 0 ]; then
     exit 0
   fi
 fi
-say "Run it:   cd $DIR && pnpm dev   +   pnpm dev:dashboard   → http://localhost:3000"
-say "Or as a service:  bash scripts/serve.sh   (see deploy/launchd and deploy/systemd)"
+say "Chat now:         xdc-agent"
+say "Dashboard:        xdc-agent serve   → http://localhost:3000   (or install the login service: see deploy/launchd)"
