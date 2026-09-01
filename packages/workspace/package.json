@@ -1,5 +1,5 @@
 {
-  "name": "@xdc-ai/models",
+  "name": "@xdc-ai/workspace",
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
@@ -11,14 +11,11 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@mastra/core": "1.63.2",
+    "zod": "4.5.4"
+  },
   "devDependencies": {
     "@xdc-ai/config": "workspace:*"
-  },
-  "optionalDependencies": {
-    "ai-sdk-provider-claude-code": "4.2.0",
-    "ai-sdk-provider-codex-cli": "2.1.2"
-  },
-  "dependencies": {
-    "@mastra/core": "1.63.2"
   }
 }

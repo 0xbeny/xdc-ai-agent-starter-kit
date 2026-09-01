@@ -19,7 +19,9 @@
     "format:check": "prettier --check .",
     "db:up": "docker compose -f deploy/compose/docker-compose.yml up -d",
     "db:down": "docker compose -f deploy/compose/docker-compose.yml down",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "setup": "pnpm --filter @xdc-ai/cli setup",
+    "login": "pnpm --filter @xdc-ai/cli login"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

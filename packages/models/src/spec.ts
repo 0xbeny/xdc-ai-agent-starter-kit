@@ -15,7 +15,7 @@ export class ModelSpecError extends Error {
   }
 }
 
-const KEYLESS_PROVIDERS = new Set(['ollama', 'lmstudio', 'custom'])
+const KEYLESS_PROVIDERS = new Set(['ollama', 'lmstudio', 'custom', 'claude-code', 'codex'])
 
 const KNOWN_ENV_KEYS: Record<string, string> = {
   openai: 'OPENAI_API_KEY',
