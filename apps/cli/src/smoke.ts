@@ -11,6 +11,11 @@ export interface SmokeResult {
 /** One tiny round-trip through Mastra with the chosen model, bounded by a timeout. */
 export async function smokeTest(spec: string, env: Env, timeoutMs = 45_000): Promise<SmokeResult> {
   const started = Date.now()
+  // Mastra's model router reads provider keys from process.env, so keys entered a moment ago must be applied there.
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value === 'string' && value !== '' && process.env[key] !== value)
+      process.env[key] = value
+  }
   try {
     const model = await resolveModel(parseModelSpec(spec), env)
     const agent = new Agent({

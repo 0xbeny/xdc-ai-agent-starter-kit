@@ -37,6 +37,28 @@ function fmtApproval(a: ApprovalLike): string {
   return `${pc.yellow(a.id.slice(0, 8))}  ${a.kind}${amt}  ${pc.dim(a.tool)}\n           ${a.reason}`
 }
 
+type KitLike = Awaited<ReturnType<typeof loadAgent>>['kit']
+
+async function statusText(kit: KitLike): Promise<string> {
+  const { listSkills, loadWorkspace } = await import('@xdc-ai/workspace')
+  const ws = loadWorkspace(kit.config.workspaceDir)
+  const name = kit.config.slots.chat
+  return [
+    `  model     ${name.provider}/${name.model}`,
+    `  wallet    ${kit.walletConnected() ? 'connected' : 'not connected (xdc-agent login)'}`,
+    `  workspace ${kit.config.workspaceDir} (${ws.files.map((f) => f.name).join(', ') || 'empty'})`,
+    `  skills    ${listSkills(kit.config.workspaceDir).length}`,
+    `  spent     ${Number(await kit.policy.spentToday()) / 1_000_000} USDC today`,
+  ].join('\n')
+}
+
+/** `xdc-agent status` — prints and exits without opening the REPL. */
+export async function printStatus(): Promise<void> {
+  const { kit } = await loadAgent()
+  console.log(await statusText(kit))
+  process.exit(0)
+}
+
 export async function runChat(): Promise<void> {
   process.stdout.write(pc.dim('starting your agent…\n'))
   const { agent, kit } = await loadAgent()
