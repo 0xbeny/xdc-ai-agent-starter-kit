@@ -6,6 +6,7 @@ import tseslint from 'typescript-eslint'
 export default defineConfig([
   globalIgnores([
     'templates/workspace/skills/**',
+    'workspace/**',
 
     '**/node_modules/',
     '**/dist/',

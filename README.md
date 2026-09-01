@@ -14,6 +14,7 @@ as the default wallet and pay-per-call tool marketplace on XDC.
 pnpm install
 pnpm setup                    # interactive: pick a model provider, test it, connect your XDC AI wallet, set spend caps
 pnpm db:up                    # Postgres 17 + pgvector, Redis — optional; with SQLite chosen in setup nothing else is needed
+pnpm chat                     # talk to it in the terminal (installer also puts `xdc-agent` on your PATH)
 pnpm dev                      # Mastra dev server + Studio at http://localhost:4111
 pnpm dev:dashboard            # human dashboard at http://localhost:3000
 ```

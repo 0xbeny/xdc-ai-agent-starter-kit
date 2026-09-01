@@ -5,3 +5,4 @@ dist
 next-env.d.ts
 pnpm-lock.yaml
 templates/workspace/skills
+workspace
