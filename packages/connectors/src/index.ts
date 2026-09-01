@@ -1,0 +1,6 @@
+export { ConnectorAuthProvider, connectorStore, finishConnect, startConnect } from './oauth.ts'
+export type { AuthFn, Env, StartResult } from './oauth.ts'
+export { classifyTool, clientFromEnv, connectorById, CONNECTORS } from './registry.ts'
+export type { ConnectorDef, ToolClass } from './registry.ts'
+export { approvalGate, createConnectorMcp, createConnectorTools } from './tools.ts'
+export type { ConnectorToolsOptions, GateResult } from './tools.ts'

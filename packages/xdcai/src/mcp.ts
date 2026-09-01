@@ -6,6 +6,7 @@ import { type FileAuthStore, tokensAreFresh, XdcaiOAuthProvider } from './auth.t
 import { Catalog } from './catalog.ts'
 import { XDCAI } from './chain.ts'
 import { guard, MONEY_TOOLS } from './guard.ts'
+import type { ApprovalStore } from './approvals.ts'
 import type { PaymentPolicy } from './policy.ts'
 
 export const XDCAI_SERVER_NAME = 'xdcai'
@@ -44,6 +45,7 @@ interface McpToolLike {
 export interface XdcaiToolsOptions {
   mcp: MCPClient
   policy: PaymentPolicy
+  approvals?: ApprovalStore
   /** Fetch the marketplace catalog; called once at startup and cached. */
   loadCatalog?: (tools: Record<string, McpToolLike>) => Promise<Catalog | undefined>
   runId?: () => string | undefined

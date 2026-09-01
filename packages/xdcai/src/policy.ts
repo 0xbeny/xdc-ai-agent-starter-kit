@@ -53,11 +53,15 @@ export function latestById(rows: readonly LedgerEntry[]): LedgerEntry[] {
 }
 
 export class PaymentPolicy {
-  constructor(
-    readonly config: PolicyConfig,
-    readonly ledger: Ledger,
-    private readonly clock: () => Date = () => new Date(),
-  ) {}
+  readonly config: PolicyConfig
+  readonly ledger: Ledger
+  private readonly clock: () => Date
+
+  constructor(config: PolicyConfig, ledger: Ledger, clock: () => Date = () => new Date()) {
+    this.config = config
+    this.ledger = ledger
+    this.clock = clock
+  }
 
   async spentToday(): Promise<bigint> {
     const rows = latestById(await this.ledger.since(startOfUtcDay(this.clock())))

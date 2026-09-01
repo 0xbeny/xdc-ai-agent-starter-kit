@@ -15,7 +15,10 @@ pnpm install
 pnpm setup                    # interactive: pick a model provider, test it, connect your XDC AI wallet, set spend caps
 pnpm db:up                    # Postgres 17 + pgvector, Redis — optional; with SQLite chosen in setup nothing else is needed
 pnpm dev                      # Mastra dev server + Studio at http://localhost:4111
+pnpm dev:dashboard            # human dashboard at http://localhost:3000
 ```
+
+Full walkthrough: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
 `pnpm setup` writes `.env` (git-ignored) and can be re-run any time; `pnpm login` repeats only the wallet step.
 
@@ -62,11 +65,39 @@ An append-only ledger (`data/ledger.jsonl`) records every attempt. XDC mainnet o
 `MEMORY.md` (curated facts the agent edits only through its `memory` tool, size-capped), `memory/YYYY-MM-DD.md`
 daily logs and `skills/`. Each file has a character budget so nothing can crowd out the identity.
 
+## How people use it
+
+**Developers today**
+
+```bash
+git clone https://github.com/0xbeny/xdc-ai-agent-starter-kit && cd xdc-ai-agent-starter-kit
+pnpm install && pnpm setup     # provider, model, key, wallet, caps — 3 minutes
+pnpm db:up && pnpm dev         # agent API + Studio on :4111
+pnpm dev:dashboard             # human dashboard on :3000
+```
+
+Then open http://localhost:3000, introduce yourself (the first chat runs `BOOTSTRAP.md`), and start
+delegating: "watch these three masternodes and tell me on Telegram if any unlock", "screen this address
+before we onboard them", "draft replies to today's support mail". Anything that costs money or leaves the
+workspace stops in **Approvals** until you say yes.
+
+**On a Mac mini or a server** — the same repo runs as a service. `deploy/compose` starts Postgres, Redis, the
+agent and the dashboard together; Coolify/Dokploy templates, a `launchd`/`systemd` unit and a one-line
+installer are on the roadmap (Phase 4). Everything the agent is — `workspace/`, `data/`, one Postgres
+database — lives in three paths, so backup and migration are a copy.
+
+**Hosted later** — because each agent is a self-contained container with its own workspace, data dir and
+database, the same image can run one agent per customer on managed infrastructure; wallet identity and
+pay-per-use billing already come from xdcai.tech. Nothing in the kit assumes a single tenant beyond the
+dashboard's single-admin login.
+
 ## Layout
 
 ```
 apps/agent          Mastra server: the assistant, memory, tools
 apps/cli            `pnpm setup` / `pnpm login` wizard
+apps/dashboard      Next.js dashboard: overview, chat (CopilotKit over AG-UI), approvals, memory, wallet, connections, settings
+packages/connectors remote-MCP connector registry (Slack, Google Workspace, Notion, GitHub, Linear), OAuth, read/write/send approval classes
 packages/models     provider-agnostic model slots (chat / fast / embed), harness providers
 packages/workspace  SOUL/IDENTITY/USER/AGENTS/MEMORY loader with budgets, memory tool, skills
 packages/xdcai      XDC chain constants, OAuth + device login, payment policy, ledger, guarded MCP tools

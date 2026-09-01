@@ -38,7 +38,11 @@ export const CLIENT_METADATA: OAuthClientMetadata = {
 
 /** JSON file with 0600 permissions holding the OAuth client registration and tokens. Never commit it. */
 export class FileAuthStore {
-  constructor(readonly path: string) {}
+  readonly path: string
+
+  constructor(path: string) {
+    this.path = path
+  }
 
   read(): StoredAuth {
     if (!existsSync(this.path)) return {}
@@ -80,7 +84,11 @@ export function tokensAreFresh(
  * this provider only serves stored credentials and lets the SDK refresh them.
  */
 export class XdcaiOAuthProvider implements OAuthClientProvider {
-  constructor(readonly store: FileAuthStore) {}
+  readonly store: FileAuthStore
+
+  constructor(store: FileAuthStore) {
+    this.store = store
+  }
 
   get redirectUrl(): undefined {
     return undefined

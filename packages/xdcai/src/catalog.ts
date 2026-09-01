@@ -87,7 +87,10 @@ function templateToRegex(template: string): RegExp {
 export class Catalog {
   private readonly matchers: { entry: CatalogEntry; re: RegExp }[]
 
-  constructor(readonly entries: CatalogEntry[]) {
+  readonly entries: CatalogEntry[]
+
+  constructor(entries: CatalogEntry[]) {
+    this.entries = entries
     this.matchers = entries.map((entry) => ({ entry, re: templateToRegex(entry.url) }))
   }
 

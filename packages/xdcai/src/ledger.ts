@@ -46,7 +46,11 @@ type Serialized = Omit<LedgerEntry, 'amount'> & { amount: string }
 
 /** Append-only JSON Lines file. Good enough for a single node; the Postgres ledger lands with the dashboard. */
 export class JsonlLedger implements Ledger {
-  constructor(readonly path: string) {}
+  readonly path: string
+
+  constructor(path: string) {
+    this.path = path
+  }
 
   async append(entry: LedgerEntry): Promise<void> {
     mkdirSync(dirname(this.path), { recursive: true })

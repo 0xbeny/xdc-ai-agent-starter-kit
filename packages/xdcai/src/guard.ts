@@ -1,3 +1,5 @@
+import type { Approval, ApprovalStore } from './approvals.ts'
+import { sameInput } from './approvals.ts'
 import type { Catalog } from './catalog.ts'
 import type { LedgerEntry, SpendKind } from './ledger.ts'
 import { type Decision, idempotencyKey, type PaymentPolicy, type SpendIntent } from './policy.ts'
@@ -63,8 +65,11 @@ export function extractPaymentFacts(result: unknown): PaymentFacts {
 export interface GuardDeps {
   policy: PaymentPolicy
   catalog: () => Catalog | undefined
+  /** Where "needs a human" decisions wait. When absent, such calls are refused outright. */
+  approvals?: ApprovalStore
   /** Attach the current run id to ledger rows when known. */
   runId?: () => string | undefined
+  threadId?: () => string | undefined
 }
 
 export interface GuardedExecution {
@@ -74,6 +79,8 @@ export interface GuardedExecution {
   decision: Decision
   entry?: LedgerEntry
   error?: string
+  /** Set when the call is parked waiting for a human. */
+  approval?: Approval
 }
 
 export interface Guarded {
@@ -152,6 +159,11 @@ export function guard(toolName: string, deps: GuardDeps): Guarded {
       if (decision.outcome === 'deny')
         return { ok: false, decision, error: `Blocked by payment policy: ${decision.reason}` }
 
+      if (decision.outcome === 'approve') {
+        const gate = await passApprovalGate(toolName, kind, input, amount, decision, deps)
+        if (!gate.ok) return gate
+      }
+
       const key =
         kind === 'call'
           ? idempotencyKey({
@@ -211,5 +223,72 @@ export function guard(toolName: string, deps: GuardDeps): Guarded {
         }
       }
     },
+  }
+}
+
+/**
+ * Approval protocol: a call that needs a human returns `approval_required` with an id; the human decides
+ * in the dashboard (or Telegram); the agent re-calls the same tool with the same arguments plus `approvalId`.
+ * An approval is single-use and bound to the exact arguments it was granted for.
+ */
+async function passApprovalGate(
+  toolName: string,
+  kind: SpendKind,
+  input: Record<string, unknown>,
+  amount: bigint,
+  decision: Decision,
+  deps: GuardDeps,
+): Promise<GuardedExecution> {
+  if (!deps.approvals) {
+    return {
+      ok: false,
+      decision,
+      error: `Needs human approval (${decision.reason}) but no approval channel is configured.`,
+    }
+  }
+  const id = typeof input.approvalId === 'string' ? input.approvalId : undefined
+  if (id) {
+    const a = await deps.approvals.get(id)
+    if (!a) return { ok: false, decision, error: `Unknown approvalId ${id}` }
+    if (a.tool !== toolName || !sameInput(a.input, input)) {
+      return {
+        ok: false,
+        decision,
+        error: 'approvalId was granted for different arguments; request a new approval',
+      }
+    }
+    if (a.status === 'approved') {
+      await deps.approvals.consume(a.id)
+      return { ok: true, decision, approval: a }
+    }
+    if (a.status === 'pending')
+      return {
+        ok: false,
+        decision,
+        approval: a,
+        error: `Approval ${a.id} is still pending. Ask the human to decide in the dashboard, then call again.`,
+      }
+    return {
+      ok: false,
+      decision,
+      approval: a,
+      error: `Approval ${a.id} is ${a.status}; the action is not permitted.`,
+    }
+  }
+  const { approvalId: _drop, ...cleanInput } = input
+  const threadId = deps.threadId?.()
+  const approval = await deps.approvals.create({
+    tool: toolName,
+    kind: kind === 'call' ? 'call' : kind,
+    ...(amount > 0n ? { amount } : {}),
+    reason: decision.reason,
+    input: cleanInput,
+    ...(threadId ? { threadId } : {}),
+  })
+  return {
+    ok: false,
+    decision,
+    approval,
+    error: `approval_required: ${decision.reason}. Approval id ${approval.id} is waiting in the dashboard. Tell the human what you want to do and why, then call this tool again with approvalId="${approval.id}" once they approve.`,
   }
 }

@@ -32,3 +32,5 @@ export {
   XDCAI_SERVER_NAME,
 } from './mcp.ts'
 export type { XdcaiToolsOptions } from './mcp.ts'
+export { APPROVAL_TTL_MS, ApprovalError, JsonlApprovalStore, sameInput } from './approvals.ts'
+export type { Approval, ApprovalKind, ApprovalStatus, ApprovalStore } from './approvals.ts'

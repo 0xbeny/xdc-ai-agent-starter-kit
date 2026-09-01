@@ -1,7 +1,12 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import { Catalog } from './catalog.ts'
 import { extractPaymentFacts, guard, MONEY_TOOLS } from './guard.ts'
+import { JsonlApprovalStore } from './approvals.ts'
 import { MemoryLedger } from './ledger.ts'
 import { DEFAULT_POLICY, PaymentPolicy } from './policy.ts'
 import { parseUsdc } from './usdc.ts'
@@ -39,7 +44,19 @@ const catalog = Catalog.from([
 function setup() {
   const ledger = new MemoryLedger()
   const policy = new PaymentPolicy(DEFAULT_POLICY, ledger, () => new Date('2026-09-01T10:00:00Z'))
-  return { ledger, policy, deps: { policy, catalog: () => catalog, runId: () => 'run-1' } }
+  const approvals = new JsonlApprovalStore(join(mkdtempSync(join(tmpdir(), 'appr-')), 'a.jsonl'))
+  return {
+    ledger,
+    policy,
+    approvals,
+    deps: {
+      policy,
+      approvals,
+      catalog: () => catalog,
+      runId: () => 'run-1',
+      threadId: () => 'thread-9',
+    },
+  }
 }
 
 describe('extractPaymentFacts', () => {
@@ -152,6 +169,72 @@ describe('guard(call)', () => {
   })
 })
 
+describe('approval protocol', () => {
+  it('parks an above-threshold call, then runs it once approved with the same arguments', async () => {
+    const { deps, approvals } = setup()
+    const g = guard('call', deps)
+    let ran = 0
+    const first = await g.execute(
+      { url: BATCH },
+      async () => (ran++, { ok: true, paid: '0.25', txHash: '0xb' }),
+    )
+    expect(ran).toBe(0)
+    expect(first.ok).toBe(false)
+    expect(first.error).toMatch(/approval_required/)
+    const id = first.approval?.id as string
+    expect(await approvals.get(id)).toMatchObject({
+      status: 'pending',
+      tool: 'call',
+      amount: parseUsdc('0.25'),
+      threadId: 'thread-9',
+    })
+
+    const stillPending = await g.execute({ url: BATCH, approvalId: id }, async () => (ran++, {}))
+    expect(ran).toBe(0)
+    expect(stillPending.error).toMatch(/still pending/)
+
+    await approvals.decide(id, 'approved')
+    const wrongArgs = await g.execute(
+      { url: `${BATCH}?x=1`, approvalId: id },
+      async () => (ran++, {}),
+    )
+    expect(ran).toBe(0)
+    expect(wrongArgs.error).toMatch(/different arguments/)
+
+    const done = await g.execute(
+      { url: BATCH, approvalId: id },
+      async () => (ran++, { ok: true, paid: '0.25', txHash: '0xb' }),
+    )
+    expect(ran).toBe(1)
+    expect(done.ok).toBe(true)
+    expect(done.entry?.status).toBe('settled')
+    expect((await approvals.get(id))?.status).toBe('consumed')
+
+    const replay = await g.execute({ url: BATCH, approvalId: id }, async () => (ran++, {}))
+    expect(ran).toBe(1)
+    expect(replay.error).toMatch(/consumed/)
+  })
+
+  it('reports a denial back to the agent', async () => {
+    const { deps, approvals } = setup()
+    const g = guard('wallet_transfer', deps)
+    const first = await g.execute({ to: '0xabc', amount: '0.5' }, async () => ({}))
+    const id = first.approval?.id as string
+    await approvals.decide(id, 'denied', 'not today')
+    const after = await g.execute({ to: '0xabc', amount: '0.5', approvalId: id }, async () => ({}))
+    expect(after.ok).toBe(false)
+    expect(after.error).toMatch(/denied/)
+  })
+
+  it('refuses outright when no approval store is configured', async () => {
+    const { policy } = setup()
+    const g = guard('call', { policy, catalog: () => catalog })
+    const out = await g.execute({ url: BATCH }, async () => ({}))
+    expect(out.ok).toBe(false)
+    expect(out.error).toMatch(/no approval channel/)
+  })
+})
+
 describe('guard(transfers and defi)', () => {
   it('always needs approval and enforces caps on the amount', async () => {
     const { deps } = setup()
@@ -161,10 +244,16 @@ describe('guard(transfers and defi)', () => {
     const tooBig = await t.execute({ to: '0xabc', amount: '5' }, async () => ({}))
     expect(tooBig.ok).toBe(false)
     expect(tooBig.error).toMatch(/per-call maximum/)
-    const okTransfer = await t.execute({ to: '0xabc', amount: '0.5' }, async () => ({
+    const parked = await t.execute({ to: '0xabc', amount: '0.5' }, async () => ({
       ok: true,
       txHash: '0xt',
     }))
+    expect(parked.error).toMatch(/approval_required/)
+    await deps.approvals.decide(parked.approval?.id as string, 'approved')
+    const okTransfer = await t.execute(
+      { to: '0xabc', amount: '0.5', approvalId: parked.approval?.id },
+      async () => ({ ok: true, txHash: '0xt' }),
+    )
     expect(okTransfer.entry).toMatchObject({
       kind: 'transfer',
       amount: parseUsdc('0.5'),

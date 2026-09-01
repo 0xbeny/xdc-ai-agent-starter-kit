@@ -21,7 +21,9 @@
     "db:down": "docker compose -f deploy/compose/docker-compose.yml down",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "setup": "pnpm --filter @xdc-ai/cli setup",
-    "login": "pnpm --filter @xdc-ai/cli login"
+    "login": "pnpm --filter @xdc-ai/cli login",
+    "dev:dashboard": "pnpm --filter @xdc-ai/dashboard dev",
+    "dev:all": "pnpm --filter @xdc-ai/agent dev & pnpm --filter @xdc-ai/dashboard dev; wait"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
