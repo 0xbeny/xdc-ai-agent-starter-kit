@@ -4,7 +4,7 @@
 # launchd/systemd restarts the set. Storage: whatever .env says (SQLite needs nothing else).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 22 >/dev/null 2>&1 || true
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use "$(tr -d '[:space:]' < .node-version)" >/dev/null 2>&1 || true
 export PATH="$HOME/.local/share/pnpm:$PATH"
 set -a; [ -f .env ] && . ./.env; set +a
 export NODE_ENV=production MASTRA_TELEMETRY_DISABLED=1 NEXT_TELEMETRY_DISABLED=1 COPILOTKIT_TELEMETRY_DISABLED=true

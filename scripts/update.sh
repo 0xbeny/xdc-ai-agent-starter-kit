@@ -3,7 +3,7 @@
 # are git-ignored and never modified. Usage: pnpm update:kit   (or bash scripts/update.sh [--no-restart])
 set -euo pipefail
 cd "$(dirname "$0")/.."
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 22 >/dev/null 2>&1 || true
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use "$(tr -d '[:space:]' < .node-version)" >/dev/null 2>&1 || true
 say() { printf '\033[1;36m▸\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m✗\033[0m %b\n' "$*" >&2; exit 1; }
 

@@ -9,23 +9,19 @@ NODE_MAJOR=22
 say() { printf '\033[1;36m▸\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
-command -v git >/dev/null || die "git is required (macOS: xcode-select --install)"
-
-if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt $NODE_MAJOR ]; then
-  say "Installing Node $NODE_MAJOR via nvm"
-  export NVM_DIR="$HOME/.nvm"
-  [ -s "$NVM_DIR/nvm.sh" ] || curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+ensure_node() { # pins Node to the version the kit is tested with (.node-version); Mastra's deps reject 24.1–24.10 and <22.22
+  local want="$1"
+  if command -v node >/dev/null && [ "$(node -v)" = "v$want" ]; then say "Node v$want"; return; fi
+  say "Installing Node $want via nvm"
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  [ -s "$NVM_DIR/nvm.sh" ] || curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash >/dev/null
   # shellcheck disable=SC1091
   . "$NVM_DIR/nvm.sh"
-  nvm install $NODE_MAJOR >/dev/null
-  nvm use $NODE_MAJOR >/dev/null
-fi
-say "Node $(node -v)"
-
-if ! command -v pnpm >/dev/null; then
-  say "Enabling pnpm via corepack"
-  corepack enable && corepack prepare pnpm@10.18.2 --activate
-fi
+  nvm install "$want" >/dev/null
+  nvm use "$want" >/dev/null
+  say "Node $(node -v)"
+}
+command -v git >/dev/null || die "git is required (macOS: xcode-select --install)"
 
 if [ -d "$DIR/.git" ]; then
   say "Updating $DIR"; git -C "$DIR" pull --ff-only
@@ -33,6 +29,11 @@ else
   say "Cloning into $DIR"; git clone --depth 1 "$REPO_URL" "$DIR"
 fi
 cd "$DIR"
+ensure_node "$(tr -d '[:space:]' < .node-version)"
+if ! command -v pnpm >/dev/null; then
+  say "Enabling pnpm via corepack"
+  corepack enable && corepack prepare "$(node -p "require('./package.json').packageManager")" --activate
+fi
 say "Installing dependencies"; pnpm install --frozen-lockfile
 
 if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
