@@ -14,6 +14,20 @@ import {
 
 const store = () => new FileAuthStore(join(mkdtempSync(join(tmpdir(), 'auth-')), 'xdcai-auth.json'))
 
+describe('CLIENT_METADATA', () => {
+  it('satisfies xdcai.tech registration (loopback redirect, code + device grants)', async () => {
+    const { CLIENT_METADATA } = await import('./auth.ts')
+    expect(
+      CLIENT_METADATA.redirect_uris.every((u) =>
+        /^https:\/\/|^http:\/\/(127\.0\.0\.1|localhost)/.test(u),
+      ),
+    ).toBe(true)
+    expect(CLIENT_METADATA.redirect_uris.length).toBeGreaterThan(0)
+    expect(CLIENT_METADATA.grant_types).toContain('urn:ietf:params:oauth:grant-type:device_code')
+    expect(CLIENT_METADATA.response_types).toContain('code')
+  })
+})
+
 describe('FileAuthStore', () => {
   it('round-trips and keeps 0600 permissions', () => {
     const s = store()
