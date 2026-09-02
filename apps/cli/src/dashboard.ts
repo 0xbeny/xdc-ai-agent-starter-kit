@@ -6,6 +6,7 @@ import pc from 'picocolors'
 
 import {
   ensureServiceRunning,
+  lanUrl,
   isSsh,
   launchdLoaded,
   launchdState,
@@ -103,7 +104,7 @@ export async function openDashboard(
       `Dashboard did not come up on ${url}. Try:  xdc-agent dashboard --logs   or   xdc-agent dashboard --foreground\nRecent log:\n${readErrTail(root, 15) || readLogTail(root, 25)}`,
     )
   }
-  say(`Dashboard: ${pc.bold(url)}`)
+  say(`Dashboard: ${pc.bold(url)} · from other machines: ${pc.bold(lanUrl(port))}`)
   if (process.env.DASHBOARD_PASSWORD) say('Password: the DASHBOARD_PASSWORD you set in setup')
   else
     say(
@@ -228,7 +229,7 @@ export async function runDashboardCommand(
     const st = launchdState()
     console.log(
       [
-        `  dashboard   ${dash ? pc.green(`up on ${url}`) : pc.red(`not answering on ${url}`)}`,
+        `  dashboard   ${dash ? pc.green(`up on ${url} · ${lanUrl(port)}`) : pc.red(`not answering on ${url}`)}`,
         `  agent api   ${agent ? pc.green('up on :4111') : pc.red('not answering on :4111')}`,
         `  launchd     ${launchdLoaded() ? (st?.running ? pc.green(`running (pid ${st.pid})`) : pc.yellow(`loaded, not running (last exit ${st?.lastExit ?? '?'})`)) : pc.dim('not installed')}`,
         `  processes   ${ourPids(root).length} of ours`,
