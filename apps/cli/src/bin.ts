@@ -73,6 +73,19 @@ switch (command) {
       process.exit(1)
     }
     break
+  case '--version':
+  case '-v':
+  case 'version': {
+    const { execSync } = await import('node:child_process')
+    let head = 'unknown'
+    try {
+      head = execSync('git rev-parse --short HEAD', { cwd: root, encoding: 'utf8' }).trim()
+    } catch {
+      /* not a git checkout */
+    }
+    console.log(`xdc-agent 0.1.0-dev (${head})`)
+    break
+  }
   case 'doctor':
     process.exit(await (await import('./doctor.ts')).runDoctor(root))
   // eslint-disable-next-line no-fallthrough -- process.exit never returns

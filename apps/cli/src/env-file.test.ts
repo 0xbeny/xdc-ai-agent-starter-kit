@@ -22,12 +22,12 @@ describe('mergeEnv', () => {
       OPENAI_API_KEY: undefined,
     })
     expect(after).toBe(
-      '# models\nMODEL_CHAT=xai/grok-4.3\nOPENAI_API_KEY=\n\n# storage\nDATABASE_URL=postgres://x\n\n# added by pnpm setup\nXAI_API_KEY="k 1"\n',
+      '# models\nMODEL_CHAT=xai/grok-4.3\nOPENAI_API_KEY=\n\n# storage\nDATABASE_URL=postgres://x\n\n# added by xdc-agent setup\nXAI_API_KEY="k 1"\n',
     )
   })
 
   it('creates a file from nothing', () => {
-    expect(mergeEnv('', { A: '1' })).toBe('# added by pnpm setup\nA=1\n')
+    expect(mergeEnv('', { A: '1' })).toBe('# added by xdc-agent setup\nA=1\n')
   })
 
   it('round-trips through parseEnv', () => {
