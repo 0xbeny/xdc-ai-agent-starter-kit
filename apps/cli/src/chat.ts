@@ -14,6 +14,8 @@ import { spawn } from 'node:child_process'
 import { banner, createStreamRenderer, statsLine, toolDone, toolLine } from './render.ts'
 import { runDashboardCommand } from './dashboard.ts'
 import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
+import { gracefulExit } from 'exit-hook'
+
 import { runDoctor } from './doctor.ts'
 import { loadOrCreateThread, rotateThread } from './thread.ts'
 
@@ -87,7 +89,7 @@ async function statusText(kit: KitLike): Promise<string> {
 export async function printStatus(): Promise<void> {
   const { kit } = await loadAgent()
   console.log(await statusText(kit))
-  process.exit(0)
+  gracefulExit(0)
 }
 
 export async function runChat(): Promise<void> {
@@ -564,5 +566,5 @@ export async function runChat(): Promise<void> {
   }
   rl.close()
   console.log(pc.dim('bye'))
-  process.exit(0)
+  gracefulExit(0)
 }
