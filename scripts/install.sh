@@ -2,6 +2,8 @@
 # One-line installer:  curl -fsSL https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh | bash
 # Installs prerequisites it can (nvm/node 22, pnpm), clones the kit into ~/xdc-ai-agent-starter-kit, runs setup.
 set -euo pipefail
+# Never die silently: any unexpected failure tells the user what happened and how to report it.
+trap 'printf "\033[1;31m✗\033[0m installer stopped unexpectedly at line %s. Re-run with a log and share it:\n  curl -fsSL https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh | bash 2>&1 | tee /tmp/xdc-install.log\n" "$LINENO" >&2' ERR
 REPO_URL=${REPO_URL:-https://github.com/0xbeny/xdc-ai-agent-starter-kit}
 DIR=${XDC_AGENT_DIR:-$HOME/xdc-ai-agent-starter-kit}
 NODE_MAJOR=22
@@ -16,11 +18,17 @@ ensure_node() { # pins Node to the version the kit is tested with (.node-version
   if command -v node >/dev/null && [ "$(node -v)" = "v$want" ]; then say "Node v$want"; return; fi
   say "Installing Node $want via nvm"
   export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-  [ -s "$NVM_DIR/nvm.sh" ] || curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash >/dev/null
+  [ -s "$NVM_DIR/nvm.sh" ] || curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | PROFILE=/dev/null bash >/dev/null
+  # nvm.sh is not `set -eu`-clean: on a fresh machine sourcing it can return non-zero and would
+  # kill this script with no message at all. Relax the flags around every nvm interaction and
+  # verify the outcome ourselves.
+  set +e +u
   # shellcheck disable=SC1091
-  . "$NVM_DIR/nvm.sh"
+  . "$NVM_DIR/nvm.sh" >/dev/null 2>&1
   nvm install "$want" >/dev/null
   nvm use "$want" >/dev/null
+  set -eu
+  command -v node >/dev/null && [ "$(node -v 2>/dev/null)" = "v$want" ] || die "Node $want did not install. Try manually:  . \"$NVM_DIR/nvm.sh\" && nvm install $want   — then re-run this installer."
   say "Node $(node -v)"
 }
 command -v git >/dev/null || die "git is required (macOS: xcode-select --install)"
