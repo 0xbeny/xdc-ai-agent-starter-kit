@@ -3,7 +3,12 @@
 # are git-ignored and never modified. Usage: pnpm update:kit   (or bash scripts/update.sh [--no-restart])
 set -euo pipefail
 cd "$(dirname "$0")/.."
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use "$(tr -d '[:space:]' < .node-version)" >/dev/null 2>&1 || true
+REQ=$(tr -d '[:space:]' < .node-version)
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 && nvm use "$REQ" >/dev/null 2>&1 || true
+if ! command -v node >/dev/null 2>&1 || [ "$(node -v 2>/dev/null)" != "v$REQ" ]; then
+  [ -d "$NVM_DIR/versions/node/v$REQ/bin" ] && PATH="$NVM_DIR/versions/node/v$REQ/bin:$PATH"
+fi
+PATH="$HOME/.local/share/pnpm:$PATH"; export PATH
 say() { printf '\033[1;36m▸\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m✗\033[0m %b\n' "$*" >&2; exit 1; }
 

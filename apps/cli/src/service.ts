@@ -122,3 +122,9 @@ export function readErrTail(root: string, lines = 12): string {
   if (!existsSync(p)) return ''
   return readFileSync(p, 'utf8').split('\n').filter(Boolean).slice(-lines).join('\n')
 }
+
+/** URL reachable from other machines on the LAN (mDNS name on macOS, plain hostname elsewhere). */
+export function lanUrl(port: number): string {
+  const h = hostname()
+  return `http://${h.endsWith('.local') || h.includes('.') ? h : `${h}.local`}:${port}`
+}
