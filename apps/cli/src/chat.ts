@@ -11,6 +11,7 @@ import { z } from 'zod'
 
 import { spawn } from 'node:child_process'
 
+import { banner, createStreamRenderer, statsLine, toolDone, toolLine } from './render.ts'
 import { runDashboardCommand } from './dashboard.ts'
 import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
 
@@ -100,7 +101,7 @@ export async function runChat(): Promise<void> {
       outputSchema: z.object({ ok: z.boolean(), message: z.string() }),
       execute: async () => {
         try {
-          await runDashboardCommand(root, ['--no-open'])
+          await runDashboardCommand(root, ['--no-open'], { background: true })
           return {
             ok: true,
             message:
@@ -142,9 +143,14 @@ export async function runChat(): Promise<void> {
   const closed = new Promise<null>((resolve) => rl.once('close', () => resolve(null)))
   const name = kit.config.slots.chat
   console.log(
-    `${pc.bgCyan(pc.black(' xdc-agent '))} ${pc.dim(`${name.provider}/${name.model} · workspace ${kit.config.workspaceDir}`)}`,
+    banner({
+      model: `${name.provider}/${name.model}`,
+      wallet: kit.walletConnected(),
+      skills: (await import('@xdc-ai/workspace')).listSkills(kit.config.workspaceDir).length,
+      pending: (await kit.approvals.list('pending')).length,
+      workspace: kit.config.workspaceDir,
+    }),
   )
-  console.log(pc.dim('  /help for commands · Ctrl+C to leave'))
 
   const showPending = async (): Promise<void> => {
     const pending = (await kit.approvals.list('pending')) as ApprovalLike[]
@@ -369,7 +375,7 @@ export async function runChat(): Promise<void> {
     if (cmd.kind === 'dashboard') {
       rl.pause()
       try {
-        await runDashboardCommand(root, cmd.args)
+        await runDashboardCommand(root, cmd.args, { background: true })
       } catch (error) {
         console.log(pc.red(`  ${error instanceof Error ? error.message : String(error)}`))
       }
@@ -417,20 +423,52 @@ export async function runChat(): Promise<void> {
 
     const message = cmd.kind === 'retry' ? (lastMessage as string) : cmd.text
     lastMessage = message
-    process.stdout.write(pc.magenta('agent › '))
+    console.log(pc.magenta('agent ›'))
+    const started = Date.now()
     try {
       const stream = await agent.stream(message, {
         memory: { thread, resource },
         toolsets: { cli: localTools },
       })
-      let wrote = false
-      for await (const part of stream.textStream) {
-        process.stdout.write(part)
-        wrote = true
+      const renderer = createStreamRenderer((t) => process.stdout.write(t))
+      const toolStarts = new Map<string, number>()
+      const full = (
+        stream as {
+          fullStream?: AsyncIterable<{ type: string; payload?: Record<string, unknown> }>
+        }
+      ).fullStream
+      if (full) {
+        for await (const chunk of full) {
+          const p = chunk.payload ?? {}
+          if (chunk.type === 'text-delta') {
+            const t = (p.text ?? p.textDelta ?? '') as string
+            if (t) renderer.push(t)
+          } else if (chunk.type === 'tool-call') {
+            const toolName = String(p.toolName ?? p.name ?? 'tool')
+            toolStarts.set(String(p.toolCallId ?? toolName), Date.now())
+            renderer.flush()
+            console.log(toolLine(toolName, p.args))
+          } else if (chunk.type === 'tool-result') {
+            const toolName = String(p.toolName ?? p.name ?? 'tool')
+            const t0 = toolStarts.get(String(p.toolCallId ?? toolName))
+            const failed =
+              p.isError === true ||
+              (typeof p.result === 'object' &&
+                p.result !== null &&
+                (p.result as { ok?: boolean }).ok === false)
+            console.log(toolDone(toolName, !failed, t0 !== undefined ? Date.now() - t0 : undefined))
+          } else if (chunk.type === 'error') {
+            renderer.flush()
+            console.log(pc.red(`  error: ${String((p as { error?: unknown }).error ?? 'unknown')}`))
+          }
+        }
+      } else {
+        for await (const part of stream.textStream) renderer.push(part)
       }
-      if (!wrote) process.stdout.write(pc.dim('(no text reply)'))
-      process.stdout.write('\n')
+      const wrote = renderer.flush()
+      if (wrote === 0) console.log(pc.dim('  (no text reply)'))
       lastUsage = await (stream as { usage?: Promise<unknown> }).usage?.catch(() => undefined)
+      console.log(statsLine(Date.now() - started, lastUsage))
     } catch (error) {
       console.log(pc.red(`\n  error: ${error instanceof Error ? error.message : String(error)}`))
     }
