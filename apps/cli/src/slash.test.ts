@@ -21,6 +21,11 @@ describe('parseSlash', () => {
     expect(parseSlash('/dashboard --logs')).toEqual({ kind: 'dashboard', args: ['--logs'] })
     expect(parseSlash('/upgrade')).toEqual({ kind: 'update' })
     expect(parseSlash('/grants')).toEqual({ kind: 'grants', args: [] })
+    expect(parseSlash('/tools')).toEqual({ kind: 'tools', args: [] })
+    expect(parseSlash('/tools off fetch_url')).toEqual({
+      kind: 'tools',
+      args: ['off', 'fetch_url'],
+    })
     expect(parseSlash('/grants revoke abc1')).toEqual({ kind: 'grants', args: ['revoke', 'abc1'] })
   })
 })

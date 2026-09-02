@@ -256,6 +256,19 @@ export function kitRoutes(kit: Kit): Route[] {
       }
     }),
 
+    route(kit, '/kit/tools', 'GET', async (c) =>
+      c.json(json({ disabled: kit.toolPolicy.disabled() })),
+    ),
+
+    route(kit, '/kit/tools/:name/:action', 'POST', async (c) => {
+      const name = c.req.param('name') ?? ''
+      const action = c.req.param('action')
+      if (!name || (action !== 'on' && action !== 'off'))
+        return c.json({ error: 'need /kit/tools/<name>/(on|off)' }, 400)
+      kit.toolPolicy.set(name, action === 'on')
+      return c.json(json({ disabled: kit.toolPolicy.disabled() }))
+    }),
+
     route(kit, '/kit/grants', 'GET', async (c) => c.json(json({ grants: kit.grants.list() }))),
 
     route(kit, '/kit/grants/:id/revoke', 'POST', async (c) => {
