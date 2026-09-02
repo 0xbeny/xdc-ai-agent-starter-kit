@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -6,7 +5,13 @@ import * as p from '@clack/prompts'
 import pc from 'picocolors'
 
 import { mergeEnv, parseEnv } from './env-file.ts'
-import { ensureServiceRunning, launchdLoaded, readLogTail, say } from './service.ts'
+import {
+  ensureServiceRunning,
+  installLaunchdService,
+  launchdLoaded,
+  readLogTail,
+  say,
+} from './service.ts'
 
 export async function validateBotToken(
   token: string,
@@ -143,21 +148,48 @@ export async function connectTelegram(paths: { root: string; envFile: string }):
     finish(check.username, code, paths.root)
     return
   }
-  s.stop('No login service — running the gateway in the foreground (Ctrl+C stops it)')
-  finish(check.username, undefined, paths.root)
-  const child = spawn('pnpm', ['--filter', '@xdc-ai/agent', 'gateway'], {
-    cwd: paths.root,
-    stdio: 'inherit',
-  })
-  await new Promise<void>((resolve) => child.on('exit', () => resolve()))
+  s.stop('No login service installed yet.')
+  if (process.platform === 'darwin') {
+    const auto = await p.confirm({
+      message:
+        'Install the login service so the agent and this bot start automatically and keep running in the background?',
+      initialValue: true,
+    })
+    if (!p.isCancel(auto) && auto) {
+      try {
+        installLaunchdService(paths.root)
+        say('Login service installed — it now starts at every login.')
+      } catch (error) {
+        p.log.warn(
+          `Could not install the service: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+  }
+  if (!launchdLoaded()) {
+    say(
+      'Starting the agent + gateway in the background — closing this terminal will NOT stop it (a reboot will, unless the login service is installed).',
+    )
+  }
+  ensureServiceRunning(paths.root)
+  s.start('Waiting for the gateway (first start builds the apps — up to 3 minutes)…')
+  let code: string | undefined
+  for (let i = 0; i < 90 && !code; i++) {
+    await new Promise((r) => setTimeout(r, 2000))
+    code = readPairingFile(paths.root)
+  }
+  s.stop(
+    code ? 'Gateway is up' : 'No pairing code yet — run `xdc-agent telegram` again in a minute',
+  )
+  finish(check.username, code, paths.root)
 }
 
-function finish(username: string | undefined, code: string | undefined, root: string): void {
+function finish(username: string | undefined, code: string | undefined, _root: string): void {
   const lines = [
     `Open ${pc.bold(`https://t.me/${username ?? 'your_bot'}`)} and send ${pc.cyan(code ? `/pair ${code}` : '/pair <code>')}`,
     code
       ? 'The first person to pair becomes admin and receives approval requests.'
-      : `The 6-digit code is printed by the gateway: ${pc.dim(`grep "pairing code" ${join(root, 'data', 'service.out.log')}`)}`,
+      : `See the current code anytime:  ${pc.cyan('xdc-agent telegram')}`,
     'Then just message the bot. Admins: /approvals lists what is waiting.',
   ]
   p.note(lines.join('\n'), 'Pair your Telegram')
