@@ -1,5 +1,13 @@
 import { execSync, spawn } from 'node:child_process'
-import { existsSync, mkdirSync, openSync, readFileSync, renameSync, statSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { hostname, userInfo } from 'node:os'
 import { join } from 'node:path'
 
@@ -153,4 +161,19 @@ export function lanUrl(port: number): string {
 export function isLoopbackHost(host: string | undefined): boolean {
   const h = (host ?? '127.0.0.1').trim()
   return h === '' || h === '127.0.0.1' || h === 'localhost' || h === '::1'
+}
+
+/** Installs + loads the launchd login service (same plist the installer uses). */
+export function installLaunchdService(root: string): void {
+  const template = readFileSync(join(root, 'deploy', 'launchd', 'tech.xdcai.agent.plist'), 'utf8')
+  const dir = join(process.env.HOME ?? '', 'Library', 'LaunchAgents')
+  mkdirSync(dir, { recursive: true })
+  const plist = join(dir, `${LAUNCHD_LABEL}.plist`)
+  writeFileSync(plist, template.replaceAll('__REPO__', root))
+  try {
+    execSync(`launchctl unload ${JSON.stringify(plist)}`, { stdio: 'ignore' })
+  } catch {
+    /* was not loaded */
+  }
+  execSync(`launchctl load -w ${JSON.stringify(plist)}`, { stdio: 'ignore' })
 }
