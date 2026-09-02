@@ -26,6 +26,9 @@ export interface SandboxOptions {
   dataDir: string
   allowNetwork?: boolean
   timeoutMs?: number
+  /** Extra read-write mounts (human-granted folders); re-read every run so revokes apply immediately. */
+  extraPaths?: (() => string[]) | undefined
+  readWritePaths?: string[] | undefined
 }
 
 export type Isolation = ReturnType<typeof isolationFor>
@@ -48,7 +51,7 @@ export function createLocalSandbox(
       isolation,
       nativeSandbox: {
         allowNetwork: options.allowNetwork ?? false,
-        readWritePaths: [dir],
+        readWritePaths: [dir, ...(options.readWritePaths ?? [])],
         allowSystemBinaries: true,
       },
       timeout: options.timeoutMs ?? 60_000,
@@ -88,6 +91,7 @@ export class SandboxRunner {
   readonly dir: string
   fallbackReason: string | undefined
   private probed = false
+  private extrasKey = ''
   private readonly options: SandboxOptions
 
   constructor(options: SandboxOptions) {
@@ -110,6 +114,16 @@ export class SandboxRunner {
         denied: verdict.reason,
         isolation: this.isolation,
       }
+    const extras = this.options.extraPaths?.() ?? []
+    const key = [...extras].sort().join('\u0000')
+    if (key !== this.extrasKey) {
+      this.extrasKey = key
+      await this.sandbox.destroy().catch(() => undefined)
+      this.sandbox = createLocalSandbox(
+        { ...this.options, readWritePaths: extras },
+        this.isolation,
+      ).sandbox
+    }
     if (!this.probed) {
       this.probed = true
       if (this.isolation !== 'none') {
@@ -195,7 +209,7 @@ export function createSandboxTools(options: SandboxOptions) {
     id: 'run_command',
     description:
       `Run a shell command in a scratch sandbox (working dir ${runner.dir}, network ${options.allowNetwork ? 'allowed' : 'blocked'}; isolation is reported in each result). ` +
-      'Use it for calculations, data wrangling, scripts and file processing. Destructive or exfiltrating commands are refused; ask the human for those. Output is truncated.',
+      'Folders the human has granted (folder_list) are mounted read-write. Use it for calculations, data wrangling, scripts and file processing. Destructive or exfiltrating commands are refused; ask the human for those. Output is truncated.',
     inputSchema: z.object({
       command: z.string().describe('POSIX shell command line'),
       timeoutSeconds: z.number().int().min(1).max(300).optional(),

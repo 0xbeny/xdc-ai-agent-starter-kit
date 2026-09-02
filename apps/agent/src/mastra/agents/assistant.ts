@@ -1,8 +1,11 @@
+import { resolve } from 'node:path'
+
 import { Agent } from '@mastra/core/agent'
 import { Memory } from '@mastra/memory'
 import { describeModel, resolveModel } from '@xdc-ai/models'
 import { createMemoryTool, createSkillTools, listSkills, loadWorkspace } from '@xdc-ai/workspace'
 
+import { createGrantTools } from '../grants.ts'
 import { createImproveTools } from '../improve.ts'
 import { getKit } from '../kit.ts'
 import { kitFacts } from '../kit-facts.ts'
@@ -30,6 +33,7 @@ const sandbox =
     ? createSandboxTools({
         dataDir: config.dataDir,
         allowNetwork: config.env.SANDBOX_ALLOW_NETWORK === '1',
+        extraPaths: () => kit.grants.paths(),
       })
     : undefined
 if (sandbox)
@@ -53,6 +57,14 @@ export const assistant = new Agent({
       agentPort: Number(config.env.AGENT_PORT ?? 4111),
       ...(config.env.KIT_API_TOKEN ? { apiToken: config.env.KIT_API_TOKEN } : {}),
     }),
+    ...(sandbox
+      ? createGrantTools({
+          grants: kit.grants,
+          approvals: kit.approvals,
+          workspaceDir: config.workspaceDir,
+          protectedRoots: [resolve(config.dataDir, '..'), config.workspaceDir],
+        })
+      : {}),
     ...(sandbox?.tools ?? {}),
   }),
   // Delegation: sub-agents appear as tools `agent-researcher` / `agent-treasurer`; the researcher may run in the background.
