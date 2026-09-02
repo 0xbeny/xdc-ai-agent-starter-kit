@@ -4,7 +4,7 @@
  */
 import './env.ts'
 
-import { rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { AccessControl, createTelegramBot, parseIdList } from '@xdc-ai/gateway'
@@ -29,6 +29,38 @@ const acl = new AccessControl({
 })
 
 const agent = mastra.getAgent('assistant')
+
+// Telegram long-polls deliver each update to exactly ONE consumer: a second gateway (e.g. a manual
+// serve.sh next to the launchd service) steals messages randomly and makes pairing look broken.
+const lockFile = join(kit.config.dataDir, 'gateway.pid')
+if (existsSync(lockFile)) {
+  const pid = Number(readFileSync(lockFile, 'utf8').trim())
+  let alive = false
+  try {
+    if (pid > 0) {
+      process.kill(pid, 0)
+      alive = true
+    }
+  } catch {
+    /* stale lock */
+  }
+  if (alive && pid !== process.pid) {
+    console.error(
+      `Another telegram gateway is already running (pid ${pid}) — not starting a second one. ` +
+        'Stop it first: xdc-agent dashboard --stop',
+    )
+    process.exit(1)
+  }
+}
+writeFileSync(lockFile, `${process.pid}\n`)
+const dropLock = (): void => {
+  try {
+    rmSync(lockFile, { force: true })
+  } catch {
+    /* best effort */
+  }
+}
+process.on('exit', dropLock)
 
 const pairingFile = join(kit.config.dataDir, 'telegram-pairing')
 
