@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import pc from 'picocolors'
 
 import { parseEnv } from './env-file.ts'
+import { readPairingFile } from './telegram.ts'
 import { isLoopbackHost, launchdLoaded, launchdState, waitForHttp } from './service.ts'
 
 export interface Check {
@@ -85,6 +86,37 @@ export function envChecks(env: Record<string, string>): Check[] {
   return out
 }
 
+/** Gateway ground truth: paired users, a live pairing code, or evidence it never started. */
+export function gatewayCheck(root: string, env: Record<string, string>): Check | undefined {
+  if (!env.TELEGRAM_BOT_TOKEN) return undefined
+  const allowlist = join(root, 'data', 'telegram-allowlist.json')
+  if (existsSync(allowlist)) {
+    try {
+      const parsed = JSON.parse(readFileSync(allowlist, 'utf8')) as {
+        users?: Record<string, unknown>
+      }
+      const users = Object.keys(parsed.users ?? {}).length
+      if (users > 0)
+        return { name: 'telegram gateway', status: 'ok', detail: `${users} user(s) paired` }
+    } catch {
+      /* unreadable — fall through */
+    }
+  }
+  const code = readPairingFile(root)
+  if (code)
+    return {
+      name: 'telegram gateway',
+      status: 'ok',
+      detail: `waiting for pairing — send /pair ${code} to your bot`,
+    }
+  return {
+    name: 'telegram gateway',
+    status: 'warn',
+    detail: 'token set but no pairing code and nobody paired — the gateway may not be running',
+    fix: 'xdc-agent dashboard --restart · then: tail -40 data/service.err.log',
+  }
+}
+
 async function run(
   cmd: string,
   args: string[],
@@ -131,7 +163,12 @@ export async function runDoctor(root: string): Promise<number> {
   const envFile = join(root, '.env')
   if (!existsSync(envFile))
     checks.push({ name: 'config', status: 'fail', detail: '.env missing', fix: 'xdc-agent setup' })
-  else checks.push(...envChecks(parseEnv(readFileSync(envFile, 'utf8'))))
+  else {
+    const parsed = parseEnv(readFileSync(envFile, 'utf8'))
+    checks.push(...envChecks(parsed))
+    const gw = gatewayCheck(root, parsed)
+    if (gw) checks.push(gw)
+  }
 
   checks.push(
     existsSync(join(root, 'workspace', 'SOUL.md'))

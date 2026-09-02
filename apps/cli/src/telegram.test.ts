@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { findPairingCode, validateBotToken } from './telegram.ts'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { findPairingCode, readPairingFile, validateBotToken } from './telegram.ts'
 
 describe('telegram helpers', () => {
   it('finds the latest pairing code in a log', () => {
@@ -33,5 +37,17 @@ describe('telegram helpers', () => {
       throw new Error('offline')
     }) as typeof fetch)
     expect(down.ok).toBe(false)
+  })
+})
+
+describe('readPairingFile', () => {
+  it('returns only a valid live 6-digit code', () => {
+    const root = mkdtempSync(join(tmpdir(), 'pair-'))
+    expect(readPairingFile(root)).toBeUndefined()
+    mkdirSync(join(root, 'data'), { recursive: true })
+    writeFileSync(join(root, 'data', 'telegram-pairing'), 'garbage')
+    expect(readPairingFile(root)).toBeUndefined()
+    writeFileSync(join(root, 'data', 'telegram-pairing'), '004242\n')
+    expect(readPairingFile(root)).toBe('004242')
   })
 })
