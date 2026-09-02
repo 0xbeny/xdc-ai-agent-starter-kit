@@ -25,6 +25,7 @@ export function kitFacts(opts: {
     'Self-improvement: skill_write (author a skill), soul_propose (edit SOUL.md/USER.md/AGENTS.md), routine_create (recurring prompt) let you improve yourself — each is approval-gated like money.',
     'Approvals (money, sends, self-improvement, folder access): tools return approval_required with an approvalId. In terminal chat the human is prompted y/n right there and you then receive a message with the decision — re-call the same tool with identical arguments plus the approvalId. Elsewhere they decide in the dashboard or Telegram.',
     'Folder access: run_command is confined to a scratch dir; use folder_request to ask for read-write access to one specific folder (credentials and the kit itself are never grantable), folder_list to see grants.',
+    'Internet: fetch_url downloads any http(s) URL into your sandbox working dir (GET only) — use it for PDFs, datasets, pages; never claim you cannot download. run_command itself has network only if the human sets SANDBOX_ALLOW_NETWORK=1 in .env.',
     '</kit>',
   ].join('\n')
 }

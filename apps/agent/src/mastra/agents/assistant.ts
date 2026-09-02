@@ -5,6 +5,7 @@ import { Memory } from '@mastra/memory'
 import { describeModel, resolveModel } from '@xdc-ai/models'
 import { createMemoryTool, createSkillTools, listSkills, loadWorkspace } from '@xdc-ai/workspace'
 
+import { createFetchTools } from '../fetch-url.ts'
 import { createGrantTools } from '../grants.ts'
 import { createImproveTools } from '../improve.ts'
 import { getKit } from '../kit.ts'
@@ -65,6 +66,7 @@ export const assistant = new Agent({
           protectedRoots: [resolve(config.dataDir, '..'), config.workspaceDir],
         })
       : {}),
+    ...(sandbox ? createFetchTools(sandbox.dir) : {}),
     ...(sandbox?.tools ?? {}),
   }),
   // Delegation: sub-agents appear as tools `agent-researcher` / `agent-treasurer`; the researcher may run in the background.
