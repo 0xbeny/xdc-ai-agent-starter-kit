@@ -8,6 +8,7 @@ import pc from 'picocolors'
 import { parseEnv } from './env-file.ts'
 import { readPairingFile } from './telegram.ts'
 import {
+  ensureServiceRunning,
   isLoopbackHost,
   lastDistinctError,
   launchdLoaded,
@@ -222,7 +223,18 @@ export async function runDoctor(root: string): Promise<number> {
         },
   )
 
-  const agentUp = await waitForHttp('http://127.0.0.1:4111/api', 2500)
+  let agentUp = await waitForHttp('http://127.0.0.1:4111/api', 2500)
+  let healed = false
+  if (!agentUp) {
+    // Self-heal by default: restart the service and wait, instead of telling the human to do it.
+    try {
+      ensureServiceRunning(root, true)
+      agentUp = await waitForHttp('http://127.0.0.1:4111/api', 90_000)
+      healed = agentUp
+    } catch {
+      /* reported below */
+    }
+  }
   const env = existsSync(envFile) ? parseEnv(readFileSync(envFile, 'utf8')) : {}
   if (agentUp) {
     let extra = ''
@@ -238,7 +250,11 @@ export async function runDoctor(root: string): Promise<number> {
     } catch {
       /* status endpoint shape may vary */
     }
-    checks.push({ name: 'agent api', status: 'ok', detail: `answering on :4111${extra}` })
+    checks.push({
+      name: 'agent api',
+      status: 'ok',
+      detail: `${healed ? 'was down — restarted it for you, now ' : ''}answering on :4111${extra}`,
+    })
     try {
       const res = await fetch('http://127.0.0.1:4111/kit/tools', {
         headers: env.KIT_API_TOKEN ? { 'x-kit-token': env.KIT_API_TOKEN } : {},
