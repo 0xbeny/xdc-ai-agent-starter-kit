@@ -21,6 +21,7 @@
     "@xdc-ai/secrets": "workspace:*",
     "@xdc-ai/workspace": "workspace:*",
     "@xdc-ai/xdcai": "workspace:*",
+    "exit-hook": "5.1.0",
     "picocolors": "1.1.1",
     "zod": "4.5.4"
   },
