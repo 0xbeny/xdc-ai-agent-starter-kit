@@ -7,9 +7,11 @@ import { describe, expect, it } from 'vitest'
 import { createLocalSandbox, isolationFor, SandboxRunner, sandboxMode } from './sandbox.ts'
 
 describe('sandbox config', () => {
-  it('is off unless SANDBOX=local', () => {
-    expect(sandboxMode({})).toBe('off')
+  it('is on by default; off only when explicitly disabled', () => {
+    expect(sandboxMode({})).toBe('local')
     expect(sandboxMode({ SANDBOX: 'local' })).toBe('local')
+    expect(sandboxMode({ SANDBOX: 'off' })).toBe('off')
+    expect(sandboxMode({ SANDBOX: '0' })).toBe('off')
   })
 
   it('picks the native isolation for the platform', () => {

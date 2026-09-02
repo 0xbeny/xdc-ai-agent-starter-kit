@@ -9,8 +9,10 @@ import { classifyCommand, clipOutput } from './commands.ts'
 
 export type SandboxMode = 'off' | 'local'
 
+/** ON by default — an unset SANDBOX (e.g. a .env written by an older wizard) must not silently remove tools. */
 export function sandboxMode(env: Readonly<Record<string, string | undefined>>): SandboxMode {
-  return env.SANDBOX?.trim().toLowerCase() === 'local' ? 'local' : 'off'
+  const v = env.SANDBOX?.trim().toLowerCase()
+  return v === 'off' || v === 'none' || v === '0' || v === 'false' ? 'off' : 'local'
 }
 
 /** Strongest native isolation available on this host: Seatbelt on macOS, Bubblewrap on Linux, otherwise none (and we say so). */
