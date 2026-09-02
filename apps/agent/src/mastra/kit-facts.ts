@@ -22,6 +22,7 @@ export function kitFacts(opts: {
     '- xdc-agent update     update the kit without touching workspace/, data/ or .env',
     `Wallet: ${opts.walletConnected ? 'connected — marketplace and wallet tools are available.' : 'not connected — wallet/marketplace tools are unavailable until the human runs xdc-agent login.'}`,
     `Skills: ${opts.skills} available via skills_list / skill_view. Memory: use the memory tool for durable facts.`,
+    'Self-improvement: skill_write (author a skill), soul_propose (edit SOUL.md/USER.md/AGENTS.md), routine_create (recurring prompt) let you improve yourself — each is approval-gated like money.',
     'Money and sends: tools return approval_required with an approvalId when a human must decide; say what you want to do and why, wait, then call again with the approvalId once approved.',
     '</kit>',
   ].join('\n')

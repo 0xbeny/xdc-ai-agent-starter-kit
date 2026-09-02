@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core/tools'
 import { MCPClient } from '@mastra/mcp'
-import { type ApprovalStore, sameInput } from '@xdc-ai/xdcai'
+import { type ApprovalKind, type ApprovalStore, sameInput } from '@xdc-ai/xdcai'
 import { z } from 'zod'
 
 import type { ConnectorAuthProvider } from './oauth.ts'
@@ -39,6 +39,7 @@ export async function approvalGate(
   cls: ToolClass,
   input: Record<string, unknown>,
   connectorLabel: string,
+  opts: { kind?: ApprovalKind; reason?: string; preview?: string } = {},
 ): Promise<GateResult> {
   const id = typeof input.approvalId === 'string' ? input.approvalId : undefined
   if (id) {
@@ -66,13 +67,14 @@ export async function approvalGate(
   const { approvalId: _drop, ...clean } = input
   const a = await approvals.create({
     tool,
-    kind: 'connector',
+    kind: opts.kind ?? 'connector',
     reason:
-      cls === 'send'
+      opts.reason ??
+      (cls === 'send'
         ? `${connectorLabel}: this leaves the workspace (send/share/invite) — review the preview`
-        : `${connectorLabel}: this changes data`,
+        : `${connectorLabel}: this changes data`),
     input: clean,
-    preview: JSON.stringify(clean, null, 2),
+    preview: opts.preview ?? JSON.stringify(clean, null, 2),
   })
   return {
     ok: false,

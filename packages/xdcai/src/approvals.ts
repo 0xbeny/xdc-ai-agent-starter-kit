@@ -3,7 +3,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 export type ApprovalStatus = 'pending' | 'approved' | 'denied' | 'consumed' | 'expired'
-export type ApprovalKind = 'call' | 'transfer' | 'defi' | 'connector'
+export type ApprovalKind = 'call' | 'transfer' | 'defi' | 'connector' | 'improve'
 
 export interface Approval {
   id: string

@@ -3,6 +3,7 @@ import { Memory } from '@mastra/memory'
 import { describeModel, resolveModel } from '@xdc-ai/models'
 import { createMemoryTool, createSkillTools, listSkills, loadWorkspace } from '@xdc-ai/workspace'
 
+import { createImproveTools } from '../improve.ts'
 import { getKit } from '../kit.ts'
 import { kitFacts } from '../kit-facts.ts'
 import { createSandboxTools, sandboxMode } from '../sandbox.ts'
@@ -46,6 +47,12 @@ export const assistant = new Agent({
     ...createSkillTools(config.workspaceDir),
     ...(await kit.xdcaiTools()),
     ...(await kit.connectorToolsAll()),
+    ...createImproveTools({
+      workspaceDir: config.workspaceDir,
+      approvals: kit.approvals,
+      agentPort: Number(config.env.AGENT_PORT ?? 4111),
+      ...(config.env.KIT_API_TOKEN ? { apiToken: config.env.KIT_API_TOKEN } : {}),
+    }),
     ...(sandbox?.tools ?? {}),
   }),
   // Delegation: sub-agents appear as tools `agent-researcher` / `agent-treasurer`; the researcher may run in the background.
