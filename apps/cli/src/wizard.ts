@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { spawnSync } from 'node:child_process'
+
 import * as p from '@clack/prompts'
 import {
   parseUsdc,
@@ -69,12 +71,38 @@ async function askModel(
   if (!provider) return null
 
   if (provider.cli && !which(provider.cli)) {
-    p.log.warn(
-      `\`${provider.cli}\` is not on your PATH. Install it and run \`${provider.loginCommand}\`, then re-run setup.`,
+    if (provider.installCommand) {
+      const install = await p.confirm({
+        message: `The \`${provider.cli}\` CLI is not installed. Install it now? (${provider.installCommand})`,
+        initialValue: true,
+      })
+      bail(install)
+      if (install) {
+        const s = p.spinner()
+        s.start(`Installing ${provider.cli}…`)
+        const r = spawnSync('sh', ['-c', provider.installCommand], { encoding: 'utf8' })
+        if (r.status === 0 && which(provider.cli)) s.stop(`\`${provider.cli}\` installed`)
+        else
+          s.stop(
+            pc.red(
+              `install failed: ${(r.stderr || r.stdout || '').trim().split('\n').at(-1) ?? 'unknown'}`,
+            ),
+          )
+      }
+    }
+    if (!which(provider.cli)) {
+      p.log.warn(
+        `\`${provider.cli}\` is not on your PATH. Install it (${provider.installCommand ?? 'see its docs'}) and re-run setup.`,
+      )
+      const cont = await p.confirm({ message: 'Continue anyway?', initialValue: false })
+      bail(cont)
+      if (!cont) return null
+    }
+  }
+  if (provider.cli && which(provider.cli) && provider.loginCommand) {
+    p.log.info(
+      `${provider.label} bills your subscription — no API key needed. If you have never signed in, the test below will fail and I will run \`${provider.loginCommand}\` for you.`,
     )
-    const cont = await p.confirm({ message: 'Continue anyway?', initialValue: false })
-    bail(cont)
-    if (!cont) return null
   }
 
   const model = await p.text({
@@ -140,7 +168,23 @@ export async function runSetup(paths: WizardPaths): Promise<void> {
   if (test) {
     const s = p.spinner()
     s.start('Contacting the model…')
-    const result = await smokeTest(chat.spec, { ...process.env, ...current, ...updates })
+    let result = await smokeTest(chat.spec, { ...process.env, ...current, ...updates })
+    if (!result.ok) {
+      const harness = providerById(chat.spec.split('/')[0] ?? '')
+      if (harness?.loginCommand && harness.cli && which(harness.cli)) {
+        s.stop(pc.yellow(`No reply — you are probably not signed in to \`${harness.cli}\` yet.`))
+        const login = await p.confirm({
+          message: `Run \`${harness.loginCommand}\` now? (opens a browser sign-in)`,
+          initialValue: true,
+        })
+        bail(login)
+        if (login) {
+          spawnSync('sh', ['-c', harness.loginCommand], { stdio: 'inherit' })
+          s.start('Trying again…')
+          result = await smokeTest(chat.spec, { ...process.env, ...current, ...updates })
+        } else s.start('')
+      }
+    }
     if (result.ok) s.stop(`Reply in ${result.ms} ms: ${pc.dim(JSON.stringify(result.text))}`)
     else {
       s.stop(pc.red(`No reply: ${result.error ?? 'unknown error'}`))

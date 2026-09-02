@@ -11,6 +11,7 @@ export interface ProviderChoice {
   askUrl?: boolean
   /** Local CLI that must be installed and logged in. */
   cli?: string
+  installCommand?: string
   loginCommand?: string
 }
 
@@ -81,19 +82,21 @@ export const PROVIDERS: ProviderChoice[] = [
   {
     id: 'claude-code',
     label: HARNESS_PROVIDERS['claude-code'].label,
-    hint: 'no key · uses `claude` login',
+    hint: 'your Claude subscription — the wizard sets it up',
     defaultModel: HARNESS_PROVIDERS['claude-code'].defaultModel,
     envKey: null,
     cli: HARNESS_PROVIDERS['claude-code'].cli,
+    installCommand: HARNESS_PROVIDERS['claude-code'].installCommand,
     loginCommand: HARNESS_PROVIDERS['claude-code'].loginCommand,
   },
   {
     id: 'codex',
     label: HARNESS_PROVIDERS.codex.label,
-    hint: 'no key · uses `codex` login',
+    hint: 'your ChatGPT subscription — the wizard sets it up',
     defaultModel: HARNESS_PROVIDERS.codex.defaultModel,
     envKey: null,
     cli: HARNESS_PROVIDERS.codex.cli,
+    installCommand: HARNESS_PROVIDERS.codex.installCommand,
     loginCommand: HARNESS_PROVIDERS.codex.loginCommand,
   },
   {

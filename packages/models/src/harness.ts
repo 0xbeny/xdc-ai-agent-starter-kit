@@ -13,6 +13,7 @@ export interface HarnessDescriptor {
   defaultModel: string
   /** Binary that must be installed and logged in. */
   cli: string
+  installCommand: string
   loginCommand: string
   label: string
   note: string
@@ -24,6 +25,7 @@ export const HARNESS_PROVIDERS = {
     factory: 'createClaudeCode',
     defaultModel: 'sonnet',
     cli: 'claude',
+    installCommand: 'npm install -g @anthropic-ai/claude-code',
     loginCommand: 'claude auth login',
     label: 'Claude Code (your Claude subscription, local CLI)',
     note: "Routes through the Claude Agent SDK and the `claude` CLI login. Personal use of your own subscription; companies should use an API key (Anthropic's terms govern subscription use in third-party tools).",
@@ -33,6 +35,7 @@ export const HARNESS_PROVIDERS = {
     factory: 'createCodexCli',
     defaultModel: 'gpt-5.5',
     cli: 'codex',
+    installCommand: 'npm install -g @openai/codex',
     loginCommand: 'codex login',
     label: 'Codex CLI (your ChatGPT subscription, local CLI)',
     note: 'Routes through the OpenAI Codex CLI login (~/.codex/auth.json) or OPENAI_API_KEY.',
