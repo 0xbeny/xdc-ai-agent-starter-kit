@@ -1,9 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
 import { DASHBOARD_PASSWORD, SESSION_COOKIE } from './lib/config.ts'
+import { gateDecision } from './lib/gate.ts'
 import { isValidSession } from './lib/session.ts'
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
+  const gate = gateDecision(process.env.DASHBOARD_HOST, DASHBOARD_PASSWORD)
+  if (!gate.allow) {
+    return new NextResponse(
+      `<!doctype html><meta charset=utf-8><title>Locked</title><body style="font-family:system-ui;max-width:36rem;margin:4rem auto;line-height:1.6"><h2>Dashboard locked</h2><p>${gate.reason}</p>`,
+      { status: 403, headers: { 'Content-Type': 'text/html' } },
+    )
+  }
   const { pathname } = request.nextUrl
   if (
     pathname.startsWith('/login') ||
