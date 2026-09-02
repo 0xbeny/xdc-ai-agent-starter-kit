@@ -14,6 +14,7 @@ import { spawn } from 'node:child_process'
 import { banner, createStreamRenderer, statsLine, toolDone, toolLine } from './render.ts'
 import { runDashboardCommand } from './dashboard.ts'
 import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
+import { runDoctor } from './doctor.ts'
 import { loadOrCreateThread, rotateThread } from './thread.ts'
 
 interface ApprovalLike {
@@ -289,6 +290,10 @@ export async function runChat(): Promise<void> {
           ? pending.map((a) => `  ${fmtApproval(a)}`).join('\n')
           : pc.dim('  nothing pending'),
       )
+      continue
+    }
+    if (cmd.kind === 'doctor') {
+      await runDoctor(root)
       continue
     }
     if (cmd.kind === 'grants') {

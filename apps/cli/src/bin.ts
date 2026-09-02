@@ -73,6 +73,9 @@ switch (command) {
       process.exit(1)
     }
     break
+  case 'doctor':
+    process.exit(await (await import('./doctor.ts')).runDoctor(root))
+  // eslint-disable-next-line no-fallthrough -- process.exit never returns
   case 'telegram':
     await ensureConfigured()
     await connectTelegram(paths)
@@ -98,6 +101,7 @@ switch (command) {
   xdc-agent setup      configure model, wallet, caps, connectors
   xdc-agent login      link the XDC AI wallet again
   xdc-agent status     one-screen summary
+  xdc-agent doctor     diagnose this install: toolchain, config, services, tools, egress
   xdc-agent serve      run agent + dashboard (+ Telegram) in the foreground
   xdc-agent update     update the kit from the original repo (your data is untouched)
   xdc-agent help`)
