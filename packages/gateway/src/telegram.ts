@@ -24,6 +24,8 @@ export interface RoutineRunLike {
 export interface TelegramGatewayOptions {
   token: string
   acl: AccessControl
+  /** Called with a live pairing code while nobody is paired, and with null once pairing succeeds. */
+  onPairingCode?: (code: string | null) => void
   agent: AgentLike
   approvals: ApprovalStore
   /** Optional source of routine (cron) results to push to admins, e.g. the agent's routine-runs.jsonl. */
@@ -43,6 +45,7 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
   const bot = new Bot(options.token)
   const seen = new Set<string>()
   let timer: NodeJS.Timeout | undefined
+  let codeTimer: ReturnType<typeof setInterval> | undefined
 
   const keyboard = (a: Approval): InlineKeyboard =>
     new InlineKeyboard()
@@ -65,6 +68,7 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
     if (!role)
       return ctx.reply('That code is not valid (codes expire after 10 minutes and are single-use).')
     log(`paired ${id} as ${role}`)
+    options.onPairingCode?.(null)
     return ctx.reply(
       role === 'admin'
         ? 'Paired as admin. You will be asked to approve payments and sends here.'
@@ -184,11 +188,19 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
         () => void Promise.all([pushNewApprovals(), pushRoutineRuns()]),
         options.pollMs ?? 5000,
       )
-      log(`pairing code: ${acl.pairingCode()} (send /pair CODE to the bot)`)
+      const announceCode = (): void => {
+        if (acl.pairedCount() > 0) return options.onPairingCode?.(null)
+        const code = acl.pairingCode()
+        log(`pairing code: ${code} (send /pair CODE to the bot)`)
+        options.onPairingCode?.(code)
+      }
+      announceCode()
+      codeTimer = setInterval(announceCode, 5 * 60 * 1000) // codes expire after 10 min; keep a live one until paired
       await bot.start({ onStart: (me) => log(`@${me.username} listening`) })
     },
     async stop() {
       if (timer) clearInterval(timer)
+      if (codeTimer) clearInterval(codeTimer)
       await bot.stop()
     },
   }

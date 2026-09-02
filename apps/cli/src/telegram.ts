@@ -28,6 +28,14 @@ export async function validateBotToken(
   }
 }
 
+/** The gateway keeps a live code in data/telegram-pairing until someone pairs. */
+export function readPairingFile(root: string): string | undefined {
+  const file = join(root, 'data', 'telegram-pairing')
+  if (!existsSync(file)) return undefined
+  const code = readFileSync(file, 'utf8').trim()
+  return /^\d{6}$/.test(code) ? code : undefined
+}
+
 export function findPairingCode(log: string): string | undefined {
   const m = [...log.matchAll(/pairing code: (\d{6})/g)].at(-1)
   return m?.[1]
@@ -66,17 +74,20 @@ export async function connectTelegram(paths: { root: string; envFile: string }):
   const before = readLogTail(paths.root, 400)
   if (launchdLoaded()) {
     ensureServiceRunning(paths.root, true)
-    s.start('Restarting the service so the gateway starts…')
+    s.start('Restarting the service so the gateway starts (a rebuild can take a minute)…')
     let code: string | undefined
-    for (let i = 0; i < 60 && !code; i++) {
+    for (let i = 0; i < 90 && !code; i++) {
       await new Promise((r) => setTimeout(r, 2000))
-      const now = readLogTail(paths.root, 400)
-      if (now !== before)
-        code = findPairingCode(
-          now.slice(before.length > 0 ? Math.max(0, now.lastIndexOf(before.slice(-200))) : 0),
-        )
+      code = readPairingFile(paths.root)
+      if (!code) {
+        const now = readLogTail(paths.root, 400)
+        if (now !== before)
+          code = findPairingCode(
+            now.slice(before.length > 0 ? Math.max(0, now.lastIndexOf(before.slice(-200))) : 0),
+          )
+      }
     }
-    s.stop(code ? 'Gateway is up' : 'Service restarted (pairing code not seen in logs yet)')
+    s.stop(code ? 'Gateway is up' : 'Service restarted (no pairing code yet — see below)')
     finish(check.username, code, paths.root)
     return
   }
