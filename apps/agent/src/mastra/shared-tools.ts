@@ -1,3 +1,5 @@
+import { join } from 'node:path'
+
 import { createFetchTools } from './fetch-url.ts'
 import { getKit } from './kit.ts'
 import { createSandboxTools, sandboxMode } from './sandbox.ts'
@@ -15,4 +17,7 @@ export const sandbox =
       })
     : undefined
 
-export const fetchTools = sandbox ? createFetchTools(sandbox.dir) : {}
+// Downloading never depends on the sandbox: without one, files land in data/downloads.
+export const fetchTools = createFetchTools(
+  sandbox ? sandbox.dir : join(config.dataDir, 'downloads'),
+)
