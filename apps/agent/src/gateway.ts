@@ -4,6 +4,7 @@
  */
 import './env.ts'
 
+import { rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { AccessControl, createTelegramBot, parseIdList } from '@xdc-ai/gateway'
@@ -29,9 +30,19 @@ const acl = new AccessControl({
 
 const agent = mastra.getAgent('assistant')
 
+const pairingFile = join(kit.config.dataDir, 'telegram-pairing')
+
 const gateway = createTelegramBot({
   token,
   acl,
+  onPairingCode(code) {
+    try {
+      if (code) writeFileSync(pairingFile, `${code}\n`, { mode: 0o600 })
+      else rmSync(pairingFile, { force: true })
+    } catch {
+      /* the log still carries the code */
+    }
+  },
   approvals: kit.approvals,
   routineRuns: kit.routineRuns,
   agent: {

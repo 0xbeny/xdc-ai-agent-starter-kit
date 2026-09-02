@@ -58,6 +58,11 @@ export class AccessControl {
     return this.roleOf(userId) !== null
   }
 
+  /** Anyone able to talk to the bot already (env allowlists + paired users). */
+  pairedCount(): number {
+    return this.envAdmins.size + this.envUsers.size + Object.keys(this.read().users).length
+  }
+
   isAdmin(userId: string): boolean {
     return this.roleOf(userId) === 'admin'
   }
