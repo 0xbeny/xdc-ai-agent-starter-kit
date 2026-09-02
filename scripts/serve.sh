@@ -6,17 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-REQ=$(tr -d '[:space:]' < .node-version)
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-# Try the nvm shell function first; it may not work under launchd, so fall back to the versioned bin dir.
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 && nvm use "$REQ" >/dev/null 2>&1 || true
-if ! command -v node >/dev/null 2>&1 || [ "$(node -v 2>/dev/null)" != "v$REQ" ]; then
-  [ -d "$NVM_DIR/versions/node/v$REQ/bin" ] && PATH="$NVM_DIR/versions/node/v$REQ/bin:$PATH"
-fi
-PATH="$HOME/.local/share/pnpm:$PATH"
-export PATH
-command -v node >/dev/null 2>&1 || { echo "✗ node v$REQ not found (looked in PATH and $NVM_DIR/versions/node/v$REQ). Re-run the installer: curl -fsSL https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh | bash" >&2; exit 1; }
-command -v pnpm >/dev/null 2>&1 || { echo "✗ pnpm not found for node $(node -v). Re-run the installer (it sets pnpm up via corepack or npm)." >&2; exit 1; }
+. scripts/node-env.sh
 
 if [ "${1:-}" = "--check" ]; then
   echo "node $(node -v) at $(command -v node)"
