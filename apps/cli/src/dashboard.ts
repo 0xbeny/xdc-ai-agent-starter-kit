@@ -19,10 +19,44 @@ import {
 } from './service.ts'
 
 /** `xdc-agent dashboard`: make sure the UI is being served, then show how to reach it (and open it when local). */
-export async function openDashboard(root: string, portOverride?: number): Promise<void> {
+export interface OpenOptions {
+  background?: boolean
+}
+
+export async function openDashboard(
+  root: string,
+  portOverride?: number,
+  opts: OpenOptions = {},
+): Promise<void> {
   const port = portOverride ?? Number(process.env.DASHBOARD_PORT ?? 3000)
   const url = `http://localhost:${port}`
   let up = await waitForHttp(`${url}/login`, 2500)
+  if (!up && opts.background) {
+    const how = ensureServiceRunning(root)
+    say(
+      how === 'launchd'
+        ? 'Starting the login service in the background…'
+        : 'Starting agent + dashboard in the background (first start builds them — about a minute)…',
+    )
+    say(
+      `It will be at ${pc.bold(url)}${isSsh() ? ` — from your laptop: ${pc.cyan(tunnelHint(port))}` : ''}`,
+    )
+    say(
+      `Keep chatting; I will print a line when it is ready. Check any time:  /dashboard --status   ·   /dashboard --logs`,
+    )
+    void (async () => {
+      const ok = await waitForHttp(`${url}/login`, 240_000)
+      if (ok)
+        console.log(
+          `\n${pc.green('✓')} dashboard is up: ${pc.bold(url)}${isSsh() ? pc.dim(`  (${tunnelHint(port)})`) : ''}`,
+        )
+      else
+        console.log(
+          `\n${pc.red('✗')} dashboard did not come up — /dashboard --logs or /dashboard --foreground to see why\n${pc.dim(readErrTail(root, 8))}`,
+        )
+    })()
+    return
+  }
   if (!up) {
     const how = ensureServiceRunning(root)
     say(
@@ -174,7 +208,11 @@ function ourPids(root: string): number[] {
   return pids
 }
 
-export async function runDashboardCommand(root: string, argv: string[]): Promise<void> {
+export async function runDashboardCommand(
+  root: string,
+  argv: string[],
+  opts: OpenOptions = {},
+): Promise<void> {
   const args = parseDashboardArgs(argv)
   const port = args.port ?? Number(process.env.DASHBOARD_PORT ?? 3000)
   const url = `http://localhost:${port}`
@@ -263,5 +301,5 @@ export async function runDashboardCommand(root: string, argv: string[]): Promise
     }
   }
   if (args.noOpen) process.env.SSH_CONNECTION = process.env.SSH_CONNECTION ?? 'no-open'
-  await openDashboard(root, port)
+  await openDashboard(root, port, opts)
 }
