@@ -62,6 +62,12 @@ fi
 INTERACTIVE=0
 if [ -t 1 ] && { : </dev/tty; } 2>/dev/null; then INTERACTIVE=1; fi
 
+record_toolchain() { # where node/pnpm REALLY are, for launchd (its PATH is minimal and nvm may not be involved)
+  mkdir -p data
+  printf 'NODE_BIN=%s\nPNPM_BIN=%s\n' "$(cd "$(dirname "$(command -v node)")" && pwd)" "$(cd "$(dirname "$(command -v pnpm)")" && pwd)" > data/toolchain.env
+  say "Toolchain recorded: $(command -v node) · $(command -v pnpm)"
+}
+
 install_shim() { # `xdc-agent` on PATH → chat / setup / login / serve / update
   local bin="$HOME/.local/bin"; mkdir -p "$bin"
   cat > "$bin/xdc-agent" <<EOS
@@ -102,10 +108,25 @@ if [ "$(uname)" = "Darwin" ] && [ "$INTERACTIVE" = 1 ]; then
   printf '\n'; read -r -p "Install as a background service that starts at login (launchd)? [y/N] " yn </dev/tty || yn=n
   if [ "${yn:-n}" = "y" ] || [ "${yn:-n}" = "Y" ]; then
     mkdir -p "$HOME/Library/LaunchAgents" data
+    record_toolchain
+    [ -f data/service.err.log ] && mv -f data/service.err.log data/service.err.log.old
     sed "s|__REPO__|$DIR|g" deploy/launchd/tech.xdcai.agent.plist > "$HOME/Library/LaunchAgents/tech.xdcai.agent.plist"
     launchctl unload "$HOME/Library/LaunchAgents/tech.xdcai.agent.plist" 2>/dev/null || true
     launchctl load -w "$HOME/Library/LaunchAgents/tech.xdcai.agent.plist"
-    say "Service installed. First start builds the apps (a minute or two). Dashboard: http://localhost:3000 · logs: $DIR/data/service.*.log"
+    say "Service installed — waiting for it to come up (first start builds the apps; up to 3 minutes)…"
+    i=0; up=""
+    while [ $i -lt 90 ]; do
+      if curl -sf -o /dev/null --max-time 2 http://127.0.0.1:4111/api 2>/dev/null || curl -s -o /dev/null -w '%{http_code}' --max-time 2 http://127.0.0.1:4111/api 2>/dev/null | grep -q '^[234]'; then up=1; break; fi
+      i=$((i+1)); sleep 2
+    done
+    if [ -n "$up" ]; then
+      say "Service is up. Dashboard: http://localhost:3000 · logs: $DIR/data/service.*.log"
+    else
+      echo "✗ the service did not come up. Last errors:" >&2
+      tail -5 data/service.err.log 2>/dev/null >&2 || true
+      echo "  Diagnose with: xdc-agent doctor   · logs: $DIR/data/service.err.log" >&2
+      exit 1
+    fi
     exit 0
   fi
 fi

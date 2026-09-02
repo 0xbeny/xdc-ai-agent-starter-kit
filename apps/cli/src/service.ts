@@ -1,5 +1,5 @@
 import { execSync, spawn } from 'node:child_process'
-import { existsSync, mkdirSync, openSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, openSync, readFileSync, renameSync, statSync } from 'node:fs'
 import { hostname, userInfo } from 'node:os'
 import { join } from 'node:path'
 
@@ -27,6 +27,12 @@ export function restartLaunchd(): void {
 
 /** Starts scripts/serve.sh detached, logging to data/service.*.log (same files launchd uses). */
 export function startDetachedServe(root: string): number | undefined {
+  try {
+    const err = join(root, 'data', 'service.err.log')
+    if (existsSync(err) && statSync(err).size > 512 * 1024) renameSync(err, `${err}.old`)
+  } catch {
+    /* rotation is best-effort */
+  }
   const dataDir = join(root, 'data')
   mkdirSync(dataDir, { recursive: true })
   const out = openSync(join(dataDir, 'service.out.log'), 'a')
@@ -43,7 +49,7 @@ export function startDetachedServe(root: string): number | undefined {
 export async function waitForHttp(
   url: string,
   timeoutMs: number,
-  onTick?: (elapsedMs: number) => void,
+  onTick?: (elapsedMs: number) => boolean | undefined,
 ): Promise<boolean> {
   const started = Date.now()
   while (Date.now() - started < timeoutMs) {
@@ -53,7 +59,7 @@ export async function waitForHttp(
     } catch {
       /* not yet */
     }
-    onTick?.(Date.now() - started)
+    if (onTick?.(Date.now() - started) === false) return false // caller observed a fatal state
     await new Promise((r) => setTimeout(r, 1500))
   }
   return false

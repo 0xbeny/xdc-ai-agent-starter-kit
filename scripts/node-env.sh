@@ -4,6 +4,16 @@
 REQ=$(tr -d '[:space:]' < .node-version)
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 
+# The installer records where it actually found node (data/toolchain.env) — trust that first:
+# launchd's PATH is minimal and node may live outside nvm (e.g. ~/.local/bin from another tool).
+if [ -f data/toolchain.env ]; then
+  # shellcheck disable=SC1091
+  . data/toolchain.env || true
+  [ -n "${NODE_BIN:-}" ] && [ -x "$NODE_BIN/node" ] && PATH="$NODE_BIN:$PATH"
+  [ -n "${PNPM_BIN:-}" ] && [ -d "$PNPM_BIN" ] && PATH="$PNPM_BIN:$PATH"
+fi
+PATH="$HOME/.local/bin:$PATH"
+
 node_ok() {
   v="${1#v}"
   maj=${v%%.*}; rest=${v#*.}; min=${rest%%.*}

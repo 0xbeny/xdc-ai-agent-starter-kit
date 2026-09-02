@@ -4,6 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 . scripts/node-env.sh
+# refresh the recorded toolchain so launchd finds the same node this shell used
+mkdir -p data
+printf 'NODE_BIN=%s\nPNPM_BIN=%s\n' "$(cd "$(dirname "$(command -v node)")" && pwd)" "$(cd "$(dirname "$(command -v pnpm)")" && pwd)" > data/toolchain.env
 say() { printf '\033[1;36m▸\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m✗\033[0m %b\n' "$*" >&2; exit 1; }
 
