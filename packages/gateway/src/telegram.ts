@@ -194,6 +194,16 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
         log(`pairing code: ${code} (send /pair CODE to the bot)`)
         options.onPairingCode?.(code)
       }
+      await bot.api
+        .setMyCommands([
+          { command: 'start', description: 'What this bot is and how to connect' },
+          { command: 'pair', description: 'Pair with your agent: /pair 123456' },
+          { command: 'approvals', description: 'List actions waiting for your yes/no' },
+          { command: 'whoami', description: 'Your Telegram id and role' },
+        ])
+        .catch((e: unknown) =>
+          log(`setMyCommands failed: ${e instanceof Error ? e.message : String(e)}`),
+        )
       announceCode()
       codeTimer = setInterval(announceCode, 5 * 60 * 1000) // codes expire after 10 min; keep a live one until paired
       await bot.start({ onStart: (me) => log(`@${me.username} listening`) })
