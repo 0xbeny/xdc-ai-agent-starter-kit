@@ -41,7 +41,59 @@ export function findPairingCode(log: string): string | undefined {
   return m?.[1]
 }
 
-/** `xdc-agent telegram`: save the bot token, (re)start the gateway, print the pairing code. */
+/**
+ * `xdc-agent telegram` / `/telegram` in chat: show where pairing stands — the live code and bot
+ * link, or "already paired", or how to start the gateway. Returns false when no token is saved yet
+ * (caller falls back to the interactive connect flow).
+ */
+export async function showPairingStatus(paths: {
+  root: string
+  envFile: string
+}): Promise<boolean> {
+  const env = existsSync(paths.envFile) ? parseEnv(readFileSync(paths.envFile, 'utf8')) : {}
+  const token = env.TELEGRAM_BOT_TOKEN?.trim()
+  if (!token) return false
+  const check = await validateBotToken(token)
+  const bot = check.ok && check.username ? `@${check.username}` : 'your bot'
+  const link = check.ok && check.username ? `https://t.me/${check.username}` : ''
+  const allowlist = join(paths.root, 'data', 'telegram-allowlist.json')
+  let paired = 0
+  if (existsSync(allowlist)) {
+    try {
+      paired = Object.keys(
+        (JSON.parse(readFileSync(allowlist, 'utf8')) as { users?: Record<string, unknown> })
+          .users ?? {},
+      ).length
+    } catch {
+      /* unreadable */
+    }
+  }
+  if (paired > 0) {
+    say(`${pc.green('✓')} Telegram is connected: ${pc.bold(bot)} · ${paired} user(s) paired`)
+    say(`  Just message it${link ? `: ${pc.cyan(link)}` : ''} — approvals arrive as buttons there.`)
+    return true
+  }
+  const code = readPairingFile(paths.root)
+  if (code) {
+    say(`${pc.green('✓')} ${pc.bold(bot)} is waiting for you. Two steps:`)
+    say(`  1. Open ${pc.cyan(link || 'your bot in Telegram')}`)
+    say(`  2. Send it:  ${pc.bold(pc.yellow(`/pair ${code}`))}`)
+    say(
+      pc.dim(
+        '  Codes rotate every few minutes — run `xdc-agent telegram` again if it says invalid.',
+      ),
+    )
+    return true
+  }
+  say(
+    `${pc.yellow('⚠')} Bot token is saved (${pc.bold(bot)}) but the gateway has not issued a code.`,
+  )
+  say(`  Start the service:  ${pc.cyan('xdc-agent dashboard --restart')}  then run this again.`)
+  say(pc.dim(`  Still nothing? tail -20 ${join(paths.root, 'data', 'service.err.log')}`))
+  return true
+}
+
+/** `xdc-agent telegram --reset`: save the bot token, (re)start the gateway, print the pairing code. */
 export async function connectTelegram(paths: { root: string; envFile: string }): Promise<void> {
   p.intro(pc.bgCyan(pc.black(' xdc-agent · telegram ')))
   const existingText = existsSync(paths.envFile) ? readFileSync(paths.envFile, 'utf8') : ''
