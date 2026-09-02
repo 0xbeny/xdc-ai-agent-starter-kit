@@ -168,6 +168,32 @@ const icon = { ok: pc.green('✓'), warn: pc.yellow('⚠'), fail: pc.red('✗') 
 /** `xdc-agent doctor` / `/doctor`: one screen of truth about this install. Returns the exit code. */
 export async function runDoctor(root: string): Promise<number> {
   const checks: Check[] = []
+  const W = 18
+  const report = (c: Check): void => {
+    checks.push(c)
+    console.log(`  ${icon[c.status]} ${c.name.padEnd(W)}${c.detail}`)
+  }
+
+  const envFile = join(root, '.env')
+  if (!existsSync(envFile))
+    report({ name: 'config', status: 'fail', detail: '.env missing', fix: 'xdc-agent setup' })
+  else {
+    const parsed = parseEnv(readFileSync(envFile, 'utf8'))
+    for (const c of envChecks(parsed)) report(c)
+    const gw = gatewayCheck(root, parsed)
+    if (gw) report(gw)
+  }
+
+  report(
+    existsSync(join(root, 'workspace', 'SOUL.md'))
+      ? { name: 'workspace', status: 'ok', detail: 'workspace/ seeded (SOUL.md present)' }
+      : {
+          name: 'workspace',
+          status: 'warn',
+          detail: 'workspace/SOUL.md missing',
+          fix: 'restart the agent once to seed it',
+        },
+  )
 
   // Run with launchd's minimal PATH, not this shell's — the service must survive without your rc files.
   const tc = await new Promise<{ code: number | null; out: string }>((resolvePromise) => {
@@ -181,7 +207,7 @@ export async function runDoctor(root: string): Promise<number> {
     child.on('error', (e) => resolvePromise({ code: null, out: String(e) }))
     child.on('exit', (code) => resolvePromise({ code, out }))
   })
-  checks.push(
+  report(
     tc.code === 0
       ? { name: 'toolchain', status: 'ok', detail: tc.out.trim().split('\n').join(' · ') }
       : {
@@ -195,41 +221,33 @@ export async function runDoctor(root: string): Promise<number> {
   const head = await run('git', ['rev-parse', '--short', 'HEAD'], root)
   const dirty = await run('git', ['status', '--porcelain', '-uno'], root)
   const dirtyCount = dirty.out.split('\n').filter(Boolean).length
-  checks.push({
+  report({
     name: 'version',
     status: dirtyCount > 0 ? 'warn' : 'ok',
     detail: `${head.out.trim() || 'unknown'}${dirtyCount ? ` · ${dirtyCount} locally modified file(s)` : ''}`,
     ...(dirtyCount ? { fix: 'xdc-agent update refuses on dirty files — revert local edits' } : {}),
   })
 
-  const envFile = join(root, '.env')
-  if (!existsSync(envFile))
-    checks.push({ name: 'config', status: 'fail', detail: '.env missing', fix: 'xdc-agent setup' })
-  else {
-    const parsed = parseEnv(readFileSync(envFile, 'utf8'))
-    checks.push(...envChecks(parsed))
-    const gw = gatewayCheck(root, parsed)
-    if (gw) checks.push(gw)
-  }
-
-  checks.push(
-    existsSync(join(root, 'workspace', 'SOUL.md'))
-      ? { name: 'workspace', status: 'ok', detail: 'workspace/ seeded (SOUL.md present)' }
-      : {
-          name: 'workspace',
-          status: 'warn',
-          detail: 'workspace/SOUL.md missing',
-          fix: 'restart the agent once to seed it',
-        },
-  )
-
-  let agentUp = await waitForHttp('http://127.0.0.1:4111/api', 2500)
+  let agentUp = await waitForHttp('http://127.0.0.1:4111/api', 2000)
   let healed = false
   if (!agentUp) {
-    // Self-heal by default: restart the service and wait, instead of telling the human to do it.
+    console.log(pc.dim('  … agent api is down — restarting the service (waiting up to 45s)'))
     try {
       ensureServiceRunning(root, true)
-      agentUp = await waitForHttp('http://127.0.0.1:4111/api', 90_000)
+      let lastDot = 0
+      let lastErr = ''
+      agentUp = await waitForHttp('http://127.0.0.1:4111/api', 45_000, (ms) => {
+        if (ms - lastDot > 5000) {
+          lastDot = ms
+          const err = lastDistinctError(root)
+          if (err && err !== lastErr) {
+            lastErr = err
+            console.log(pc.dim(`    service says: ${err.slice(0, 140)}`))
+          } else process.stdout.write(pc.dim('.'))
+        }
+        return true
+      })
+      process.stdout.write('\n')
       healed = agentUp
     } catch {
       /* reported below */
@@ -250,7 +268,7 @@ export async function runDoctor(root: string): Promise<number> {
     } catch {
       /* status endpoint shape may vary */
     }
-    checks.push({
+    report({
       name: 'agent api',
       status: 'ok',
       detail: `${healed ? 'was down — restarted it for you, now ' : ''}answering on :4111${extra}`,
@@ -262,7 +280,7 @@ export async function runDoctor(root: string): Promise<number> {
       })
       const body = (await res.json()) as { disabled?: string[] }
       const off = body.disabled ?? []
-      checks.push({
+      report({
         name: 'tools',
         status: 'ok',
         detail: off.length ? `switched off: ${off.join(', ')}` : 'all tools enabled',
@@ -271,14 +289,14 @@ export async function runDoctor(root: string): Promise<number> {
       /* older server without /kit/tools */
     }
   } else {
-    checks.push({
+    report({
       name: 'agent api',
       status: 'fail',
-      detail: 'nothing on :4111 even after restarting the service for you',
+      detail: `still nothing on :4111 (may still be building — xdc-agent dashboard --status in a minute)${lastDistinctError(root) ? ` · last error: ${lastDistinctError(root).slice(0, 140)}` : ''}`,
       fix: 'xdc-agent dashboard --foreground shows the error live · logs: xdc-agent dashboard --logs',
     })
   }
-  checks.push(
+  report(
     (await waitForHttp('http://127.0.0.1:3000/login', 2500))
       ? { name: 'dashboard ui', status: 'ok', detail: 'answering on :3000' }
       : {
@@ -291,7 +309,7 @@ export async function runDoctor(root: string): Promise<number> {
   if (launchdLoaded()) {
     const st = launchdState()
     if (st?.running) {
-      checks.push({
+      report({
         name: 'login service',
         status: 'ok',
         detail: `running (pid ${st.pid})${st.runs && st.runs > 10 ? ` · restarted ${st.runs} times before` : ''}`,
@@ -299,7 +317,7 @@ export async function runDoctor(root: string): Promise<number> {
     } else {
       const err = lastDistinctError(root)
       const looping = (st?.runs ?? 0) > 10
-      checks.push({
+      report({
         name: 'login service',
         status: 'fail',
         detail: `${looping ? `CRASH-LOOPING (${st?.runs} restarts)` : `loaded, not running (last exit ${st?.lastExit ?? '?'})`}${err ? ` · last error: ${err.slice(0, 160)}` : ''}`,
@@ -309,18 +327,16 @@ export async function runDoctor(root: string): Promise<number> {
   }
 
   try {
-    const res = await fetch('https://api.telegram.org', { signal: AbortSignal.timeout(6000) })
-    checks.push({ name: 'internet', status: 'ok', detail: `egress works (HTTP ${res.status})` })
+    const res = await fetch('https://api.telegram.org', { signal: AbortSignal.timeout(4000) })
+    report({ name: 'internet', status: 'ok', detail: `egress works (HTTP ${res.status})` })
   } catch (e) {
-    checks.push({
+    report({
       name: 'internet',
       status: 'warn',
       detail: `no egress from this process: ${e instanceof Error ? e.message : String(e)}`,
     })
   }
 
-  const w = Math.max(...checks.map((c) => c.name.length))
-  for (const c of checks) console.log(`  ${icon[c.status]} ${c.name.padEnd(w + 2)}${c.detail}`)
   const fixes = checks.filter((c) => c.fix)
   if (fixes.length) {
     console.log(pc.bold('\n  fixes:'))
