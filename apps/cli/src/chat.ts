@@ -17,6 +17,7 @@ import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './sl
 import { gracefulExit } from 'exit-hook'
 
 import { runDoctor } from './doctor.ts'
+import { ensureServiceRunning, launchdLoaded, launchdState, waitForHttp } from './service.ts'
 import { showPairingStatus } from './telegram.ts'
 import { loadOrCreateThread, rotateThread } from './thread.ts'
 
@@ -97,6 +98,17 @@ export async function runChat(): Promise<void> {
   process.stdout.write(pc.dim('starting your agent…\n'))
   const { mastra, agent, kit } = await loadAgent()
   const root = join(kit.config.workspaceDir, '..')
+  // The dashboard/Telegram service should be alive without anyone running restart commands.
+  if (launchdLoaded() && launchdState()?.running !== true) {
+    try {
+      ensureServiceRunning(root, true)
+      void waitForHttp('http://127.0.0.1:4111/api', 120_000).then((up) => {
+        if (up) console.log(pc.dim('  (login service was down — restarted it in the background)'))
+      })
+    } catch {
+      /* doctor will say why */
+    }
+  }
   // Tools that only make sense from this terminal session (the CLI process can start services; the agent server cannot).
   const localTools = {
     open_dashboard: createTool({
