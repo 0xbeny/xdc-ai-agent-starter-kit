@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  banner,
-  createStreamRenderer,
-  renderMdLine,
-  statsLine,
-  toolDone,
-  toolLine,
-} from './render.ts'
+// picocolors decides at import time (CI enables colour, local TTY-less runs disable it);
+// force colours off before loading the module so assertions are identical everywhere.
+process.env.NO_COLOR = '1'
+delete process.env.FORCE_COLOR
+const { banner, createStreamRenderer, renderMdLine, statsLine, toolDone, toolLine } =
+  await import('./render.ts')
 
+// belt and braces for environments that still emit ANSI
 // eslint-disable-next-line no-control-regex -- stripping ANSI codes in test assertions
 const strip = (s: string): string => s.replace(/\x1b\[[0-9;]*m/g, '')
 
