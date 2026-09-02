@@ -11,7 +11,7 @@ export function kitFacts(opts: {
     '<kit>',
     "You run inside xdc-ai-agent-starter-kit on the human's own machine. You cannot start or stop processes, open ports or browsers yourself" +
       (opts.sandbox
-        ? ' (run_command executes short commands in an isolated scratch sandbox; do not use it to launch servers).'
+        ? ' (run_command runs short commands in an isolated scratch sandbox — use it to inspect the machine when asked: installed tools, versions, files, e.g. `command -v node`, `ls ~/.nvm/versions/node`; never to launch servers).'
         : '.'),
     'When the human wants something the kit provides, tell them the exact command instead of improvising npm/yarn commands:',
     '- xdc-agent            chat in the terminal (this)',
