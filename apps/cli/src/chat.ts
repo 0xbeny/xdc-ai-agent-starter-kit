@@ -14,6 +14,7 @@ import { spawn } from 'node:child_process'
 import { banner, createStreamRenderer, statsLine, toolDone, toolLine } from './render.ts'
 import { runDashboardCommand } from './dashboard.ts'
 import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './slash.ts'
+import { loadOrCreateThread, rotateThread } from './thread.ts'
 
 interface ApprovalLike {
   id: string
@@ -117,7 +118,8 @@ export async function runChat(): Promise<void> {
   let lastMessage: string | undefined
   let lastUsage: unknown
   const resource = `cli:${process.env.USER ?? 'local'}`
-  let thread = `cli:${Date.now()}`
+  const threadState = loadOrCreateThread(kit.config.dataDir)
+  let thread = threadState.thread
   const interactive = stdin.isTTY === true
   const rl = createInterface({
     input: stdin,
@@ -152,6 +154,9 @@ export async function runChat(): Promise<void> {
       workspace: kit.config.workspaceDir,
     }),
   )
+
+  if (threadState.resumed)
+    console.log(pc.dim('  continuing your last conversation — /new starts fresh'))
 
   const showPending = async (): Promise<void> => {
     const pending = (await kit.approvals.list('pending')) as ApprovalLike[]
@@ -265,8 +270,8 @@ export async function runChat(): Promise<void> {
       continue
     }
     if (cmd.kind === 'new') {
-      thread = `cli:${Date.now()}`
-      console.log(pc.dim('  new conversation'))
+      thread = rotateThread(kit.config.dataDir)
+      console.log(pc.dim('  new conversation (the old one stays in history)'))
       continue
     }
     if (cmd.kind === 'status') {
