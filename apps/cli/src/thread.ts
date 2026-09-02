@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -16,7 +17,7 @@ export function loadOrCreateThread(dataDir: string): { thread: string; resumed: 
 }
 
 export function rotateThread(dataDir: string): string {
-  const thread = `cli:${Date.now()}`
+  const thread = `cli:${Date.now()}-${randomUUID().slice(0, 8)}`
   mkdirSync(dataDir, { recursive: true })
   writeFileSync(threadFile(dataDir), `${thread}\n`)
   return thread

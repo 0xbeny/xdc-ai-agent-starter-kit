@@ -31,7 +31,7 @@ export const researcher = new Agent({
           ),
       ),
     )
-    return { ...readOnly, ...fetchTools, ...(sandbox?.tools ?? {}) } as never
+    return kit.toolPolicy.filter({ ...readOnly, ...fetchTools, ...(sandbox?.tools ?? {}) }) as never
   },
   memory: new Memory({
     storage: createStorage(kit.config.env),

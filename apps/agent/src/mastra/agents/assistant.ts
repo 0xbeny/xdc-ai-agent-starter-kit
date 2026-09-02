@@ -10,6 +10,7 @@ import { createImproveTools } from '../improve.ts'
 import { getKit } from '../kit.ts'
 import { kitFacts } from '../kit-facts.ts'
 import { fetchTools, sandbox } from '../shared-tools.ts'
+import { createToolPolicyTools } from '../tool-policy.ts'
 import { createStorage } from '../storage.ts'
 
 import { researcher } from './researcher.ts'
@@ -38,28 +39,30 @@ export const assistant = new Agent({
   instructions: () =>
     `${loadWorkspace(config.workspaceDir).prompt}\n\n${kitFacts({ walletConnected: kit.walletConnected(), sandbox: Boolean(sandbox), skills: listSkills(config.workspaceDir).length })}`,
   model: async () => (await model) as never,
-  tools: async () => ({
-    memory: createMemoryTool(config.workspaceDir),
-    ...createSkillTools(config.workspaceDir),
-    ...(await kit.xdcaiTools()),
-    ...(await kit.connectorToolsAll()),
-    ...createImproveTools({
-      workspaceDir: config.workspaceDir,
-      approvals: kit.approvals,
-      agentPort: Number(config.env.AGENT_PORT ?? 4111),
-      ...(config.env.KIT_API_TOKEN ? { apiToken: config.env.KIT_API_TOKEN } : {}),
+  tools: async () =>
+    kit.toolPolicy.filter({
+      ...createToolPolicyTools({ policy: kit.toolPolicy, approvals: kit.approvals }),
+      memory: createMemoryTool(config.workspaceDir),
+      ...createSkillTools(config.workspaceDir),
+      ...(await kit.xdcaiTools()),
+      ...(await kit.connectorToolsAll()),
+      ...createImproveTools({
+        workspaceDir: config.workspaceDir,
+        approvals: kit.approvals,
+        agentPort: Number(config.env.AGENT_PORT ?? 4111),
+        ...(config.env.KIT_API_TOKEN ? { apiToken: config.env.KIT_API_TOKEN } : {}),
+      }),
+      ...(sandbox
+        ? createGrantTools({
+            grants: kit.grants,
+            approvals: kit.approvals,
+            workspaceDir: config.workspaceDir,
+            protectedRoots: [resolve(config.dataDir, '..'), config.workspaceDir],
+          })
+        : {}),
+      ...fetchTools,
+      ...(sandbox?.tools ?? {}),
     }),
-    ...(sandbox
-      ? createGrantTools({
-          grants: kit.grants,
-          approvals: kit.approvals,
-          workspaceDir: config.workspaceDir,
-          protectedRoots: [resolve(config.dataDir, '..'), config.workspaceDir],
-        })
-      : {}),
-    ...fetchTools,
-    ...(sandbox?.tools ?? {}),
-  }),
   // Delegation: sub-agents appear as tools `agent-researcher` / `agent-treasurer`; the researcher may run in the background.
   agents: { researcher, treasurer },
   backgroundTasks: {

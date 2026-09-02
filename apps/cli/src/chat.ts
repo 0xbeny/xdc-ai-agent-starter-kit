@@ -393,14 +393,31 @@ export async function runChat(): Promise<void> {
       continue
     }
     if (cmd.kind === 'tools') {
+      const [sub, name] = cmd.args
+      if ((sub === 'on' || sub === 'off') && name) {
+        kit.toolPolicy.set(name, sub === 'on')
+        console.log(
+          sub === 'on'
+            ? pc.green(`  ${name} enabled (applies from the next turn)`)
+            : pc.yellow(`  ${name} disabled (applies from the next turn)`),
+        )
+        continue
+      }
       const lister = (agent as { listTools?: (o?: unknown) => Promise<Record<string, unknown>> })
         .listTools
       const tools = lister ? await lister.call(agent) : {}
-      const names = Object.keys(tools).sort()
-      console.log(names.length ? `  ${names.join('\n  ')}` : pc.dim('  (could not list tools)'))
+      const off = new Set(kit.toolPolicy.disabled())
+      const names = [...new Set([...Object.keys(tools), ...off])].sort()
+      console.log(
+        names.length
+          ? names
+              .map((n) => (off.has(n) ? pc.red(`  ✗ ${n} (off)`) : pc.green(`  ✓ ${n}`)))
+              .join('\n')
+          : pc.dim('  (could not list tools)'),
+      )
       console.log(
         pc.dim(
-          `  ${names.length} tools · sub-agents appear as agent-<name>; wallet tools appear after xdc-agent login`,
+          `  ${names.length} tools · /tools off <name> disables one, /tools on <name> re-enables · wallet tools appear after xdc-agent login`,
         ),
       )
       continue

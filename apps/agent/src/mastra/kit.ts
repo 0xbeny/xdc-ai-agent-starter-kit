@@ -25,6 +25,7 @@ import {
 
 import { type AgentConfig, loadConfig } from './config.ts'
 import { GrantStore } from './grants.ts'
+import { ToolPolicyStore } from './tool-policy.ts'
 import { RoutineRunLog } from './routine-runs.ts'
 
 /** Process-wide singletons shared by the agent and the kit API. */
@@ -36,6 +37,7 @@ export class Kit {
   readonly approvals: JsonlApprovalStore
   readonly routineRuns: RoutineRunLog
   readonly grants: GrantStore
+  readonly toolPolicy: ToolPolicyStore
   private mcp: MCPClient | undefined
   private tools: Promise<Record<string, unknown>> | undefined
   private catalog: Catalog | undefined
@@ -49,6 +51,7 @@ export class Kit {
     this.approvals = new JsonlApprovalStore(join(config.dataDir, 'approvals.jsonl'))
     this.routineRuns = new RoutineRunLog(join(config.dataDir, 'routine-runs.jsonl'))
     this.grants = new GrantStore(join(config.dataDir, 'grants.json'))
+    this.toolPolicy = new ToolPolicyStore(join(config.dataDir, 'tool-policy.json'))
   }
 
   walletConnected(): boolean {

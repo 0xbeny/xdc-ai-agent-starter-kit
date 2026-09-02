@@ -8,7 +8,7 @@ export type SlashCommand =
   | { kind: 'model'; spec?: string }
   | { kind: 'skills' }
   | { kind: 'skill'; name: string }
-  | { kind: 'tools' }
+  | { kind: 'tools'; args: string[] }
   | { kind: 'wallet' }
   | { kind: 'memory' }
   | { kind: 'usage' }
@@ -47,7 +47,7 @@ export function parseSlash(line: string): SlashCommand {
     case 'skill':
       return arg ? { kind: 'skill', name: arg } : { kind: 'unknown', text }
     case 'tools':
-      return { kind: 'tools' }
+      return { kind: 'tools', args: rest }
     case 'wallet':
       return { kind: 'wallet' }
     case 'memory':
@@ -105,7 +105,7 @@ export const SLASH_COMMANDS: { name: string; arg?: string; help: string }[] = [
   { name: '/wallet', help: 'XDC AI wallet: address, balances, caps, spend' },
   { name: '/skills', help: 'list bundled and custom skills' },
   { name: '/skill', arg: '<name>', help: 'read one skill' },
-  { name: '/tools', help: 'tools the agent can call right now' },
+  { name: '/tools', arg: '[on|off <name>]', help: 'list tools with status, or switch one on/off' },
   { name: '/memory', help: 'show MEMORY.md (what the agent chose to remember)' },
   { name: '/routines', help: 'scheduled routines (cron) and recent runs' },
   { name: '/grants', arg: '[revoke <id>]', help: 'folders granted to the sandbox; revoke one' },
