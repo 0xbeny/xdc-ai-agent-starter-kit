@@ -6,6 +6,7 @@ import pc from 'picocolors'
 
 import {
   ensureServiceRunning,
+  lastDistinctError,
   isLoopbackHost,
   lanUrl,
   isSsh,
@@ -243,7 +244,7 @@ export async function runDashboardCommand(
       [
         `  dashboard   ${dash ? pc.green(`up on ${url} · ${lanUrl(port)}`) : pc.red(`not answering on ${url}`)}`,
         `  agent api   ${agent ? pc.green('up on :4111') : pc.red('not answering on :4111')}`,
-        `  launchd     ${launchdLoaded() ? (st?.running ? pc.green(`running (pid ${st.pid})`) : pc.yellow(`loaded, not running (last exit ${st?.lastExit ?? '?'})`)) : pc.dim('not installed')}`,
+        `  launchd     ${launchdLoaded() ? (st?.running ? pc.green(`running (pid ${st.pid})`) : pc.red(`NOT RUNNING — ${st?.runs ?? '?'} starts, last exit ${st?.lastExit ?? '?'}${lastDistinctError(root) ? ` · ${lastDistinctError(root).slice(0, 120)}` : ''}`)) : pc.dim('not installed')}`,
         `  processes   ${ourPids(root).length} of ours`,
         `  logs        ${join(root, 'data', 'service.out.log')}`,
       ].join('\n'),

@@ -104,7 +104,14 @@ export function say(line: string): void {
 }
 
 /** launchd's view of the job: running pid, or the last exit status when it died. */
-export function launchdState(): { running: boolean; pid?: number; lastExit?: number } | undefined {
+export function launchdState():
+  | {
+      running: boolean
+      pid?: number
+      lastExit?: number
+      runs?: number
+    }
+  | undefined {
   if (process.platform !== 'darwin') return undefined
   try {
     const out = execSync(`launchctl print gui/${process.getuid?.() ?? 501}/${LAUNCHD_LABEL}`, {
@@ -113,10 +120,12 @@ export function launchdState(): { running: boolean; pid?: number; lastExit?: num
     })
     const pid = /\bpid = (\d+)/.exec(out)?.[1]
     const lastExit = /last exit code = (-?\d+)/.exec(out)?.[1]
+    const runs = /\bruns = (\d+)/.exec(out)?.[1]
     return {
       running: /state = running/.test(out),
       ...(pid ? { pid: Number(pid) } : {}),
       ...(lastExit ? { lastExit: Number(lastExit) } : {}),
+      ...(runs ? { runs: Number(runs) } : {}),
     }
   } catch {
     return undefined
@@ -127,6 +136,12 @@ export function readErrTail(root: string, lines = 12): string {
   const p = join(root, 'data', 'service.err.log')
   if (!existsSync(p)) return ''
   return readFileSync(p, 'utf8').split('\n').filter(Boolean).slice(-lines).join('\n')
+}
+
+/** The last error line that is not a repeat — the one signal in a crash-looped log. */
+export function lastDistinctError(root: string): string {
+  const tail = readErrTail(root, 200).split('\n').filter(Boolean)
+  return tail.at(-1) ?? ''
 }
 
 /** URL reachable from other machines on the LAN (mDNS name on macOS, plain hostname elsewhere). */

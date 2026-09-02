@@ -37,7 +37,7 @@ export function mergeEnv(existing: string, updates: Record<string, string | unde
   })
   if (pending.size > 0) {
     if (merged.length > 0 && merged[merged.length - 1] !== '') merged.push('')
-    merged.push('# added by pnpm setup')
+    if (!merged.includes('# added by xdc-agent setup')) merged.push('# added by xdc-agent setup')
     for (const [key, value] of pending) merged.push(`${key}=${quote(value)}`)
   }
   const text = merged.join('\n')

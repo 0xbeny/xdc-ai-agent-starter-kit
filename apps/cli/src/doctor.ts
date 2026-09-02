@@ -7,7 +7,13 @@ import pc from 'picocolors'
 
 import { parseEnv } from './env-file.ts'
 import { readPairingFile } from './telegram.ts'
-import { isLoopbackHost, launchdLoaded, launchdState, waitForHttp } from './service.ts'
+import {
+  isLoopbackHost,
+  lastDistinctError,
+  launchdLoaded,
+  launchdState,
+  waitForHttp,
+} from './service.ts'
 
 export interface Check {
   name: string
@@ -138,15 +144,26 @@ const icon = { ok: pc.green('✓'), warn: pc.yellow('⚠'), fail: pc.red('✗') 
 export async function runDoctor(root: string): Promise<number> {
   const checks: Check[] = []
 
-  const tc = await run('bash', [join(root, 'scripts', 'serve.sh'), '--check'], root)
+  // Run with launchd's minimal PATH, not this shell's — the service must survive without your rc files.
+  const tc = await new Promise<{ code: number | null; out: string }>((resolvePromise) => {
+    const child = spawn('bash', [join(root, 'scripts', 'serve.sh'), '--check'], {
+      cwd: root,
+      env: { HOME: process.env.HOME ?? '', PATH: '/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin' },
+    })
+    let out = ''
+    child.stdout.on('data', (d: Buffer) => (out += d.toString()))
+    child.stderr.on('data', (d: Buffer) => (out += d.toString()))
+    child.on('error', (e) => resolvePromise({ code: null, out: String(e) }))
+    child.on('exit', (code) => resolvePromise({ code, out }))
+  })
   checks.push(
     tc.code === 0
       ? { name: 'toolchain', status: 'ok', detail: tc.out.trim().split('\n').join(' · ') }
       : {
           name: 'toolchain',
           status: 'fail',
-          detail: tc.out.trim().split('\n')[0] ?? 'serve.sh --check failed',
-          fix: 'curl -fsSL https://raw.githubusercontent.com/0xbeny/xdc-ai-agent-starter-kit/main/scripts/install.sh | bash',
+          detail: `under launchd's PATH: ${tc.out.trim().split('\n')[0] ?? 'serve.sh --check failed'}`,
+          fix: 'xdc-agent update (records the toolchain for launchd), then xdc-agent dashboard --restart',
         },
   )
 
@@ -233,14 +250,22 @@ export async function runDoctor(root: string): Promise<number> {
   )
   if (launchdLoaded()) {
     const st = launchdState()
-    checks.push({
-      name: 'login service',
-      status: st?.running ? 'ok' : 'warn',
-      detail: st?.running
-        ? `running (pid ${st.pid})`
-        : `loaded, not running (last exit ${st?.lastExit ?? '?'})`,
-      ...(st?.running ? {} : { fix: 'xdc-agent dashboard --restart · then --logs' }),
-    })
+    if (st?.running) {
+      checks.push({
+        name: 'login service',
+        status: 'ok',
+        detail: `running (pid ${st.pid})${st.runs && st.runs > 10 ? ` · restarted ${st.runs} times before` : ''}`,
+      })
+    } else {
+      const err = lastDistinctError(root)
+      const looping = (st?.runs ?? 0) > 10
+      checks.push({
+        name: 'login service',
+        status: 'fail',
+        detail: `${looping ? `CRASH-LOOPING (${st?.runs} restarts)` : `loaded, not running (last exit ${st?.lastExit ?? '?'})`}${err ? ` · last error: ${err.slice(0, 160)}` : ''}`,
+        fix: 'xdc-agent update (heals the recorded toolchain) · xdc-agent dashboard --restart · tail -40 data/service.err.log',
+      })
+    }
   }
 
   try {

@@ -27,3 +27,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 *.log
+
+# seatbelt profiles written at runtime by the in-process agent
+/apps/cli/.sandbox-profiles/
+/apps/agent/.sandbox-profiles/
