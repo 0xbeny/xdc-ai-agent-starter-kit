@@ -166,6 +166,28 @@ async function run(
 const icon = { ok: pc.green('✓'), warn: pc.yellow('⚠'), fail: pc.red('✗') } as const
 
 /** `xdc-agent doctor` / `/doctor`: one screen of truth about this install. Returns the exit code. */
+/** `doctor --report`: everything a helper needs in ONE paste — checks + real errors + versions. No secret values. */
+export async function printDoctorReport(root: string): Promise<number> {
+  console.log('===== xdc-agent doctor report (safe to share: no secret values) =====')
+  const code = await runDoctor(root)
+  const err = join(root, 'data', 'service.err.log')
+  if (existsSync(err)) {
+    const lines = readFileSync(err, 'utf8').split('\n').filter(Boolean)
+    const distinct: string[] = []
+    for (const l of lines.slice(-400)) if (distinct.at(-1) !== l) distinct.push(l)
+    console.log('\n----- service.err.log (last distinct lines) -----')
+    for (const l of distinct.slice(-25)) console.log(`  ${l.slice(0, 200)}`)
+  }
+  const out = join(root, 'data', 'service.out.log')
+  if (existsSync(out)) {
+    console.log('\n----- service.out.log (tail) -----')
+    for (const l of readFileSync(out, 'utf8').split('\n').filter(Boolean).slice(-10))
+      console.log(`  ${l.slice(0, 200)}`)
+  }
+  console.log('\n===== end of report — paste this whole block when asking for help =====')
+  return code
+}
+
 export async function runDoctor(root: string): Promise<number> {
   const checks: Check[] = []
   const W = 18

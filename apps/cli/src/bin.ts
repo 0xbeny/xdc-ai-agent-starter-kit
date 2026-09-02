@@ -85,8 +85,14 @@ switch (command) {
     console.log(`xdc-agent 0.1.0-dev (${head})`)
     break
   }
-  case 'doctor':
-    process.exit(await (await import('./doctor.ts')).runDoctor(root))
+  case 'doctor': {
+    const mod = await import('./doctor.ts')
+    process.exit(
+      process.argv.includes('--report')
+        ? await mod.printDoctorReport(root)
+        : await mod.runDoctor(root),
+    )
+  }
   // eslint-disable-next-line no-fallthrough -- process.exit never returns
   case 'telegram': {
     await ensureConfigured()
@@ -116,7 +122,7 @@ switch (command) {
   xdc-agent setup      configure model, wallet, caps, connectors
   xdc-agent login      link the XDC AI wallet again
   xdc-agent status     one-screen summary
-  xdc-agent doctor     diagnose this install: toolchain, config, services, tools, egress
+  xdc-agent doctor     diagnose AND self-heal; --report prints one shareable block for asking help
   xdc-agent serve      run agent + dashboard (+ Telegram) in the foreground
   xdc-agent update     update the kit from the original repo (your data is untouched)
   xdc-agent help`)
