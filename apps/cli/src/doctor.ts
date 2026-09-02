@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { execSync, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -92,6 +92,18 @@ export function envChecks(env: Record<string, string>): Check[] {
   return out
 }
 
+function spawnSyncCount(): number {
+  try {
+    const out = execSync("pgrep -f 'src/gateway.ts'", {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    return out.split('\n').filter(Boolean).length
+  } catch {
+    return 0 // pgrep exits 1 when nothing matches
+  }
+}
+
 /** Gateway ground truth: paired users, a live pairing code, or evidence it never started. */
 export function gatewayCheck(root: string, env: Record<string, string>): Check | undefined {
   if (!env.TELEGRAM_BOT_TOKEN) return undefined
@@ -107,6 +119,18 @@ export function gatewayCheck(root: string, env: Record<string, string>): Check |
     } catch {
       /* unreadable — fall through */
     }
+  }
+  try {
+    const procs = spawnSyncCount()
+    if (procs > 1)
+      return {
+        name: 'telegram gateway',
+        status: 'fail',
+        detail: `${procs} gateway processes are running — Telegram splits messages between them (silent bot)`,
+        fix: 'xdc-agent dashboard --stop, verify `pgrep -fl gateway.ts` is empty, then --restart',
+      }
+  } catch {
+    /* pgrep unavailable */
   }
   const code = readPairingFile(root)
   if (code)

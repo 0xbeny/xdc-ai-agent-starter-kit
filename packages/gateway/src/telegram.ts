@@ -127,18 +127,32 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
   bot.on('message:text', async (ctx) => {
     const chatId = String(ctx.chat.id)
     const userId = String(ctx.from.id)
+    log(`message from ${userId} (${ctx.message.text.length} chars)`)
     await ctx.replyWithChatAction('typing')
+    const typing = setInterval(
+      () => void ctx.replyWithChatAction('typing').catch(() => undefined),
+      5000,
+    )
     try {
-      const answer = await agent.reply(ctx.message.text, {
-        threadId: `telegram:${chatId}`,
-        resourceId: `telegram:${userId}`,
-        ...(ctx.from.first_name ? { userName: ctx.from.first_name } : {}),
-      })
+      const answer = await Promise.race([
+        agent.reply(ctx.message.text, {
+          threadId: `telegram:${chatId}`,
+          resourceId: `telegram:${userId}`,
+          ...(ctx.from.first_name ? { userName: ctx.from.first_name } : {}),
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('the model took longer than 3 minutes')), 180_000),
+        ),
+      ])
+      log(`replied to ${userId} (${(answer ?? '').length} chars)`)
       for (const part of chunk(answer || '(no reply)')) await ctx.reply(part)
     } catch (error) {
+      log(`reply to ${userId} failed: ${error instanceof Error ? error.message : String(error)}`)
       await ctx.reply(
         `Something went wrong: ${error instanceof Error ? error.message : String(error)}`,
       )
+    } finally {
+      clearInterval(typing)
     }
   })
 
