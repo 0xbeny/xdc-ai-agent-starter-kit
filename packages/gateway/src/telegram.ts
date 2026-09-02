@@ -90,6 +90,15 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
       await ctx.reply(approvalMessage(a), { parse_mode: 'MarkdownV2', reply_markup: keyboard(a) })
   })
 
+  bot.command('invite', async (ctx) => {
+    if (!acl.isAdmin(String(ctx.from?.id))) return ctx.reply('Only admins can invite.')
+    const code = acl.pairingCode()
+    log(`invite code issued by ${ctx.from?.id}`)
+    return ctx.reply(
+      `Invite code: ${code}\nHave them open this bot and send:  /pair ${code}\nSingle-use, expires in 10 minutes. They join as a regular user.`,
+    )
+  })
+
   bot.command('whoami', async (ctx) =>
     ctx.reply(`id ${ctx.from?.id} · role ${acl.roleOf(String(ctx.from?.id))}`),
   )
@@ -199,6 +208,7 @@ export function createTelegramBot(options: TelegramGatewayOptions): {
           { command: 'start', description: 'What this bot is and how to connect' },
           { command: 'pair', description: 'Pair with your agent: /pair 123456' },
           { command: 'approvals', description: 'List actions waiting for your yes/no' },
+          { command: 'invite', description: 'Admins: mint a single-use code for another person' },
           { command: 'whoami', description: 'Your Telegram id and role' },
         ])
         .catch((e: unknown) =>
