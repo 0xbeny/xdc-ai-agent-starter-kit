@@ -274,8 +274,8 @@ export async function runDoctor(root: string): Promise<number> {
     checks.push({
       name: 'agent api',
       status: 'fail',
-      detail: 'nothing on :4111',
-      fix: 'xdc-agent dashboard (starts the service) · logs: xdc-agent dashboard --logs',
+      detail: 'nothing on :4111 even after restarting the service for you',
+      fix: 'xdc-agent dashboard --foreground shows the error live · logs: xdc-agent dashboard --logs',
     })
   }
   checks.push(
