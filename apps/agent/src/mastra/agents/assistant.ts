@@ -5,12 +5,11 @@ import { Memory } from '@mastra/memory'
 import { describeModel, resolveModel } from '@xdc-ai/models'
 import { createMemoryTool, createSkillTools, listSkills, loadWorkspace } from '@xdc-ai/workspace'
 
-import { createFetchTools } from '../fetch-url.ts'
 import { createGrantTools } from '../grants.ts'
 import { createImproveTools } from '../improve.ts'
 import { getKit } from '../kit.ts'
 import { kitFacts } from '../kit-facts.ts'
-import { createSandboxTools, sandboxMode } from '../sandbox.ts'
+import { fetchTools, sandbox } from '../shared-tools.ts'
 import { createStorage } from '../storage.ts'
 
 import { researcher } from './researcher.ts'
@@ -29,14 +28,6 @@ console.info(
 
 const model = resolveModel(config.slots.chat, config.env)
 
-const sandbox =
-  sandboxMode(config.env) === 'local'
-    ? createSandboxTools({
-        dataDir: config.dataDir,
-        allowNetwork: config.env.SANDBOX_ALLOW_NETWORK === '1',
-        extraPaths: () => kit.grants.paths(),
-      })
-    : undefined
 if (sandbox)
   console.info(`[agent] sandbox: local · ${sandbox.isolation} isolation · ${sandbox.dir}`)
 
@@ -66,7 +57,7 @@ export const assistant = new Agent({
           protectedRoots: [resolve(config.dataDir, '..'), config.workspaceDir],
         })
       : {}),
-    ...(sandbox ? createFetchTools(sandbox.dir) : {}),
+    ...fetchTools,
     ...(sandbox?.tools ?? {}),
   }),
   // Delegation: sub-agents appear as tools `agent-researcher` / `agent-treasurer`; the researcher may run in the background.
