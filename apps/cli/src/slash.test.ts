@@ -23,6 +23,7 @@ describe('parseSlash', () => {
     expect(parseSlash('/grants')).toEqual({ kind: 'grants', args: [] })
     expect(parseSlash('/tools')).toEqual({ kind: 'tools', args: [] })
     expect(parseSlash('/doctor')).toEqual({ kind: 'doctor' })
+    expect(parseSlash('/tg')).toEqual({ kind: 'telegram' })
     expect(parseSlash('/tools off fetch_url')).toEqual({
       kind: 'tools',
       args: ['off', 'fetch_url'],

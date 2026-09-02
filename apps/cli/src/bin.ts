@@ -9,7 +9,6 @@ import { spawn } from 'node:child_process'
 
 import { runChat } from './chat.ts'
 import { runDashboardCommand } from './dashboard.ts'
-import { connectTelegram } from './telegram.ts'
 import { login, runSetup } from './wizard.ts'
 
 function findRoot(start: string): string {
@@ -89,10 +88,13 @@ switch (command) {
   case 'doctor':
     process.exit(await (await import('./doctor.ts')).runDoctor(root))
   // eslint-disable-next-line no-fallthrough -- process.exit never returns
-  case 'telegram':
+  case 'telegram': {
     await ensureConfigured()
-    await connectTelegram(paths)
+    const { connectTelegram: connect, showPairingStatus } = await import('./telegram.ts')
+    const shown = process.argv.includes('--reset') ? false : await showPairingStatus(paths)
+    if (!shown) await connect(paths)
     break
+  }
   case 'serve':
     process.exit(await script('serve.sh'))
     break
@@ -110,7 +112,7 @@ switch (command) {
 
   xdc-agent            chat with the agent (default) — type / for commands
   xdc-agent dashboard  start the UI if needed and open it; flags: --status --logs --foreground --restart --stop --port <n> --no-open
-  xdc-agent telegram   connect a Telegram bot and get the pairing code
+  xdc-agent telegram   show the pairing code / connection status (--reset to change the bot)
   xdc-agent setup      configure model, wallet, caps, connectors
   xdc-agent login      link the XDC AI wallet again
   xdc-agent status     one-screen summary

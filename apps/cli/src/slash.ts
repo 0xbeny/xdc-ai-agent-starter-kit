@@ -18,6 +18,7 @@ export type SlashCommand =
   | { kind: 'grants'; args: string[] }
   | { kind: 'update' }
   | { kind: 'doctor' }
+  | { kind: 'telegram' }
   | { kind: 'help' }
   | { kind: 'quit' }
   | { kind: 'unknown'; text: string }
@@ -67,6 +68,9 @@ export function parseSlash(line: string): SlashCommand {
       return { kind: 'dashboard', args: rest }
     case 'doctor':
       return { kind: 'doctor' }
+    case 'telegram':
+    case 'tg':
+      return { kind: 'telegram' }
     case 'update':
     case 'upgrade':
       return { kind: 'update' }
@@ -113,6 +117,7 @@ export const SLASH_COMMANDS: { name: string; arg?: string; help: string }[] = [
   { name: '/routines', help: 'scheduled routines (cron) and recent runs' },
   { name: '/grants', arg: '[revoke <id>]', help: 'folders granted to the sandbox; revoke one' },
   { name: '/doctor', help: 'diagnose the install: toolchain, config, services, tools, egress' },
+  { name: '/telegram', help: 'Telegram pairing code / connection status' },
   {
     name: '/dashboard',
     help: 'start the web UI if needed and open it (or print the ssh tunnel command)',

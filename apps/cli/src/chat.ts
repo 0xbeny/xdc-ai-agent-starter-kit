@@ -17,6 +17,7 @@ import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './sl
 import { gracefulExit } from 'exit-hook'
 
 import { runDoctor } from './doctor.ts'
+import { showPairingStatus } from './telegram.ts'
 import { loadOrCreateThread, rotateThread } from './thread.ts'
 
 interface ApprovalLike {
@@ -292,6 +293,14 @@ export async function runChat(): Promise<void> {
           ? pending.map((a) => `  ${fmtApproval(a)}`).join('\n')
           : pc.dim('  nothing pending'),
       )
+      continue
+    }
+    if (cmd.kind === 'telegram') {
+      const shown = await showPairingStatus({ root, envFile: join(root, '.env') })
+      if (!shown)
+        console.log(
+          pc.dim('  no bot token saved yet — run `xdc-agent telegram` in a terminal to set one up'),
+        )
       continue
     }
     if (cmd.kind === 'doctor') {
