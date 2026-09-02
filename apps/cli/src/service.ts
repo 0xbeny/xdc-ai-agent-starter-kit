@@ -128,3 +128,8 @@ export function lanUrl(port: number): string {
   const h = hostname()
   return `http://${h.endsWith('.local') || h.includes('.') ? h : `${h}.local`}:${port}`
 }
+
+export function isLoopbackHost(host: string | undefined): boolean {
+  const h = (host ?? '127.0.0.1').trim()
+  return h === '' || h === '127.0.0.1' || h === 'localhost' || h === '::1'
+}

@@ -70,9 +70,11 @@ Starts the service if it isn't running, waits for it, and opens http://localhost
 SSH, prints the exact `ssh -L 3000:localhost:3000 user@machine` command to run from your laptop.
 The service (or `xdc-agent serve`) serves the dashboard on port 3000 and the agent API on 4111.
 
-- **From your laptop**: `ssh -L 3000:localhost:3000 <user>@<machine>` → http://localhost:3000
-- **On your LAN**: http://<machine-ip>:3000 — set `DASHBOARD_PASSWORD` first (the wizard asks; it also generates `KIT_API_TOKEN`)
-- **From the internet**: Tailscale (recommended), or a Cloudflare Tunnel / Caddy with HTTPS; then set `DASHBOARD_URL` and `AGENT_URL` in `.env` so connector OAuth callbacks work
+The bind address decides the auth requirement (same model as Hermes):
+
+- **Local only (default)** — `DASHBOARD_HOST=127.0.0.1`, no password needed; from your laptop: `ssh -L 3000:localhost:3000 <user>@<machine>` → http://localhost:3000
+- **On your LAN** — `xdc-agent dashboard --host 0.0.0.0` (or set `DASHBOARD_HOST=0.0.0.0` in `.env`), then open `http://<machine>.local:3000` from any browser. A non-local bind **requires** `DASHBOARD_PASSWORD` — every request is refused with instructions until you set one (the wizard asks; it also generates `KIT_API_TOKEN`).
+- **From the internet** — Tailscale (recommended), or a Cloudflare Tunnel / Caddy with HTTPS; set `DASHBOARD_URL` and `AGENT_URL` in `.env` so connector OAuth callbacks work
 
 ## 3b. Run the server and dashboard
 

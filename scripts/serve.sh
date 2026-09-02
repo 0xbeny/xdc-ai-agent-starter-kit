@@ -37,7 +37,7 @@ fi
 
 pids=""
 ( cd apps/agent && exec node .mastra/output/index.mjs ) & pids="$pids $!"
-( cd apps/dashboard && PORT="${DASHBOARD_PORT:-3000}" exec pnpm exec next start -H "${DASHBOARD_HOST:-0.0.0.0}" -p "${DASHBOARD_PORT:-3000}" ) & pids="$pids $!"
+( cd apps/dashboard && PORT="${DASHBOARD_PORT:-3000}" exec pnpm exec next start -H "${DASHBOARD_HOST:-127.0.0.1}" -p "${DASHBOARD_PORT:-3000}" ) & pids="$pids $!"
 if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
   ( cd apps/agent && exec node src/gateway.ts ) & pids="$pids $!"
 fi

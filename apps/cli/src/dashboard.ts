@@ -6,6 +6,7 @@ import pc from 'picocolors'
 
 import {
   ensureServiceRunning,
+  isLoopbackHost,
   lanUrl,
   isSsh,
   launchdLoaded,
@@ -104,7 +105,9 @@ export async function openDashboard(
       `Dashboard did not come up on ${url}. Try:  xdc-agent dashboard --logs   or   xdc-agent dashboard --foreground\nRecent log:\n${readErrTail(root, 15) || readLogTail(root, 25)}`,
     )
   }
-  say(`Dashboard: ${pc.bold(url)} · from other machines: ${pc.bold(lanUrl(port))}`)
+  say(
+    `Dashboard: ${pc.bold(url)}${!isLoopbackHost(process.env.DASHBOARD_HOST) ? ` · from other machines: ${pc.bold(lanUrl(port))}` : ''}`,
+  )
   if (process.env.DASHBOARD_PASSWORD) say('Password: the DASHBOARD_PASSWORD you set in setup')
   else
     say(
@@ -123,6 +126,7 @@ export async function openDashboard(
 export interface DashboardArgs {
   action: 'open' | 'status' | 'logs' | 'foreground' | 'restart' | 'stop' | 'help'
   port?: number
+  host?: string
   noOpen: boolean
   error?: string
 }
@@ -158,6 +162,12 @@ export function parseDashboardArgs(argv: string[]): DashboardArgs {
       case '--no-open':
         out.noOpen = true
         break
+      case '--host': {
+        const h = argv[++i]
+        if (!h) return { ...out, action: 'help', error: '--host needs an address (e.g. 0.0.0.0)' }
+        out.host = h
+        break
+      }
       case '--port':
       case '-p': {
         const v = Number(argv[++i])
@@ -180,6 +190,7 @@ export const DASHBOARD_HELP = `xdc-agent dashboard [flags]
   --foreground   run scripts/serve.sh in this terminal to watch it start (Ctrl+C stops it)
   --restart      restart the service (launchd) or start a fresh background instance
   --stop         stop the service / background instance
+  --host <a>     bind address: 127.0.0.1 local-only (default) · 0.0.0.0 LAN (requires DASHBOARD_PASSWORD)
   --port <n>     dashboard port (default 3000)   --no-open  never launch a browser`
 
 function ourPids(root: string): number[] {
@@ -215,6 +226,7 @@ export async function runDashboardCommand(
   opts: OpenOptions = {},
 ): Promise<void> {
   const args = parseDashboardArgs(argv)
+  if (args.host) process.env.DASHBOARD_HOST = args.host
   const port = args.port ?? Number(process.env.DASHBOARD_PORT ?? 3000)
   const url = `http://localhost:${port}`
   if (args.action === 'help') {
