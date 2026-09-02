@@ -22,6 +22,7 @@ interface ApprovalLike {
   reason: string
   status: string
   amount?: bigint
+  preview?: string
 }
 
 /** Loaded lazily: the agent bundle is heavy and not needed for `setup`/`login`. */
@@ -162,6 +163,96 @@ export async function runChat(): Promise<void> {
     )
   }
 
+  await showPending()
+
+  const pendingBefore = new Set<string>((await kit.approvals.list('pending')).map((a) => a.id))
+
+  const runTurn = async (message: string): Promise<void> => {
+    console.log(pc.magenta('agent ›'))
+    const started = Date.now()
+    try {
+      const stream = await agent.stream(message, {
+        memory: { thread, resource },
+        toolsets: { cli: localTools },
+      })
+      const renderer = createStreamRenderer((t) => process.stdout.write(t))
+      const toolStarts = new Map<string, number>()
+      const full = (
+        stream as {
+          fullStream?: AsyncIterable<{ type: string; payload?: Record<string, unknown> }>
+        }
+      ).fullStream
+      if (full) {
+        for await (const chunk of full) {
+          const p = chunk.payload ?? {}
+          if (chunk.type === 'text-delta') {
+            const t = (p.text ?? p.textDelta ?? '') as string
+            if (t) renderer.push(t)
+          } else if (chunk.type === 'tool-call') {
+            const toolName = String(p.toolName ?? p.name ?? 'tool')
+            toolStarts.set(String(p.toolCallId ?? toolName), Date.now())
+            renderer.flush()
+            console.log(toolLine(toolName, p.args))
+          } else if (chunk.type === 'tool-result') {
+            const toolName = String(p.toolName ?? p.name ?? 'tool')
+            const t0 = toolStarts.get(String(p.toolCallId ?? toolName))
+            const failed =
+              p.isError === true ||
+              (typeof p.result === 'object' &&
+                p.result !== null &&
+                (p.result as { ok?: boolean }).ok === false)
+            console.log(toolDone(toolName, !failed, t0 !== undefined ? Date.now() - t0 : undefined))
+          } else if (chunk.type === 'error') {
+            renderer.flush()
+            console.log(pc.red(`  error: ${String((p as { error?: unknown }).error ?? 'unknown')}`))
+          }
+        }
+      } else {
+        for await (const part of stream.textStream) renderer.push(part)
+      }
+      const wrote = renderer.flush()
+      if (wrote === 0) console.log(pc.dim('  (no text reply)'))
+      lastUsage = await (stream as { usage?: Promise<unknown> }).usage?.catch(() => undefined)
+      console.log(statsLine(Date.now() - started, lastUsage))
+    } catch (error) {
+      console.log(pc.red(`\n  error: ${error instanceof Error ? error.message : String(error)}`))
+    }
+  }
+
+  /** New approvals from the last turn get a y/n right here; the decision goes back to the agent automatically. */
+  const promptNewApprovals = async (): Promise<void> => {
+    for (let round = 0; round < 3; round++) {
+      const fresh = ((await kit.approvals.list('pending')) as ApprovalLike[]).filter(
+        (a) => !pendingBefore.has(a.id),
+      )
+      if (fresh.length === 0) return
+      const decisions: string[] = []
+      for (const a of fresh) {
+        pendingBefore.add(a.id)
+        console.log(
+          `\n${pc.yellow('⧗ approval needed')} ${pc.dim(a.id.slice(0, 8))} — ${a.reason}${a.amount !== undefined ? pc.bold(` · ${usdc(a.amount)}`) : ''}`,
+        )
+        if (a.preview) console.log(pc.dim(clip(a.preview, 800).replace(/^/gm, '    ')))
+        const ans = await Promise.race([
+          rl.question(pc.cyan('  approve? (y/N) › ')).catch(() => null),
+          closed,
+        ])
+        const yes = ans !== null && /^y(es)?$/i.test(ans.trim())
+        try {
+          await kit.approvals.decide(a.id, yes ? 'approved' : 'denied', 'via chat')
+        } catch {
+          continue // decided elsewhere in the meantime
+        }
+        console.log(yes ? pc.green('  ✓ approved') : pc.red('  ✗ denied'))
+        decisions.push(`${a.id} ${yes ? 'approved' : 'denied'}`)
+      }
+      if (decisions.length === 0) return
+      await runTurn(
+        `[Decided in chat by the human: ${decisions.join('; ')}. For each approved id, call the same tool again with identical arguments plus that approvalId. Do not retry denied items.]`,
+      )
+    }
+  }
+
   for (;;) {
     const answer = await Promise.race([rl.question(pc.cyan('\nyou › ')).catch(() => null), closed])
     if (answer === null) break // Ctrl+D / stdin closed
@@ -193,6 +284,24 @@ export async function runChat(): Promise<void> {
           ? pending.map((a) => `  ${fmtApproval(a)}`).join('\n')
           : pc.dim('  nothing pending'),
       )
+      continue
+    }
+    if (cmd.kind === 'grants') {
+      if (cmd.args[0] === 'revoke' && cmd.args[1]) {
+        try {
+          console.log(pc.green(`  revoked ${kit.grants.revoke(cmd.args[1]).path}`))
+        } catch (error) {
+          console.log(pc.red(`  ${error instanceof Error ? error.message : String(error)}`))
+        }
+      } else {
+        const grants = kit.grants.list()
+        console.log(
+          grants.length
+            ? grants.map((g) => `  ${pc.dim(g.id.slice(0, 8))}  ${g.path}`).join('\n') +
+                pc.dim('\n  /grants revoke <id> removes one')
+            : pc.dim('  no folders granted — the agent asks via folder_request when it needs one'),
+        )
+      }
       continue
     }
     if (cmd.kind === 'approve' || cmd.kind === 'deny') {
@@ -423,56 +532,8 @@ export async function runChat(): Promise<void> {
 
     const message = cmd.kind === 'retry' ? (lastMessage as string) : cmd.text
     lastMessage = message
-    console.log(pc.magenta('agent ›'))
-    const started = Date.now()
-    try {
-      const stream = await agent.stream(message, {
-        memory: { thread, resource },
-        toolsets: { cli: localTools },
-      })
-      const renderer = createStreamRenderer((t) => process.stdout.write(t))
-      const toolStarts = new Map<string, number>()
-      const full = (
-        stream as {
-          fullStream?: AsyncIterable<{ type: string; payload?: Record<string, unknown> }>
-        }
-      ).fullStream
-      if (full) {
-        for await (const chunk of full) {
-          const p = chunk.payload ?? {}
-          if (chunk.type === 'text-delta') {
-            const t = (p.text ?? p.textDelta ?? '') as string
-            if (t) renderer.push(t)
-          } else if (chunk.type === 'tool-call') {
-            const toolName = String(p.toolName ?? p.name ?? 'tool')
-            toolStarts.set(String(p.toolCallId ?? toolName), Date.now())
-            renderer.flush()
-            console.log(toolLine(toolName, p.args))
-          } else if (chunk.type === 'tool-result') {
-            const toolName = String(p.toolName ?? p.name ?? 'tool')
-            const t0 = toolStarts.get(String(p.toolCallId ?? toolName))
-            const failed =
-              p.isError === true ||
-              (typeof p.result === 'object' &&
-                p.result !== null &&
-                (p.result as { ok?: boolean }).ok === false)
-            console.log(toolDone(toolName, !failed, t0 !== undefined ? Date.now() - t0 : undefined))
-          } else if (chunk.type === 'error') {
-            renderer.flush()
-            console.log(pc.red(`  error: ${String((p as { error?: unknown }).error ?? 'unknown')}`))
-          }
-        }
-      } else {
-        for await (const part of stream.textStream) renderer.push(part)
-      }
-      const wrote = renderer.flush()
-      if (wrote === 0) console.log(pc.dim('  (no text reply)'))
-      lastUsage = await (stream as { usage?: Promise<unknown> }).usage?.catch(() => undefined)
-      console.log(statsLine(Date.now() - started, lastUsage))
-    } catch (error) {
-      console.log(pc.red(`\n  error: ${error instanceof Error ? error.message : String(error)}`))
-    }
-    await showPending()
+    await runTurn(message)
+    await promptNewApprovals()
   }
   rl.close()
   console.log(pc.dim('bye'))

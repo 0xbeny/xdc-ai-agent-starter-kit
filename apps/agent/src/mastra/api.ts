@@ -256,6 +256,16 @@ export function kitRoutes(kit: Kit): Route[] {
       }
     }),
 
+    route(kit, '/kit/grants', 'GET', async (c) => c.json(json({ grants: kit.grants.list() }))),
+
+    route(kit, '/kit/grants/:id/revoke', 'POST', async (c) => {
+      try {
+        return c.json(json({ revoked: kit.grants.revoke(c.req.param('id') ?? '') }))
+      } catch (error) {
+        return c.json({ error: error instanceof Error ? error.message : String(error) }, 400)
+      }
+    }),
+
     route(kit, '/kit/connectors/:id/disconnect', 'POST', async (c) => {
       const id = c.req.param('id') ?? ''
       kit.connectorProvider(id).invalidateCredentials('all')

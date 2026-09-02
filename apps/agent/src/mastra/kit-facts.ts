@@ -23,7 +23,8 @@ export function kitFacts(opts: {
     `Wallet: ${opts.walletConnected ? 'connected — marketplace and wallet tools are available.' : 'not connected — wallet/marketplace tools are unavailable until the human runs xdc-agent login.'}`,
     `Skills: ${opts.skills} available via skills_list / skill_view. Memory: use the memory tool for durable facts.`,
     'Self-improvement: skill_write (author a skill), soul_propose (edit SOUL.md/USER.md/AGENTS.md), routine_create (recurring prompt) let you improve yourself — each is approval-gated like money.',
-    'Money and sends: tools return approval_required with an approvalId when a human must decide; say what you want to do and why, wait, then call again with the approvalId once approved.',
+    'Approvals (money, sends, self-improvement, folder access): tools return approval_required with an approvalId. In terminal chat the human is prompted y/n right there and you then receive a message with the decision — re-call the same tool with identical arguments plus the approvalId. Elsewhere they decide in the dashboard or Telegram.',
+    'Folder access: run_command is confined to a scratch dir; use folder_request to ask for read-write access to one specific folder (credentials and the kit itself are never grantable), folder_list to see grants.',
     '</kit>',
   ].join('\n')
 }

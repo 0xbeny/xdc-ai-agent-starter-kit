@@ -15,6 +15,7 @@ export type SlashCommand =
   | { kind: 'routines' }
   | { kind: 'retry' }
   | { kind: 'dashboard'; args: string[] }
+  | { kind: 'grants'; args: string[] }
   | { kind: 'update' }
   | { kind: 'help' }
   | { kind: 'quit' }
@@ -58,6 +59,8 @@ export function parseSlash(line: string): SlashCommand {
       return { kind: 'routines' }
     case 'retry':
       return { kind: 'retry' }
+    case 'grants':
+      return { kind: 'grants', args: rest }
     case 'dashboard':
     case 'ui':
       return { kind: 'dashboard', args: rest }
@@ -105,6 +108,7 @@ export const SLASH_COMMANDS: { name: string; arg?: string; help: string }[] = [
   { name: '/tools', help: 'tools the agent can call right now' },
   { name: '/memory', help: 'show MEMORY.md (what the agent chose to remember)' },
   { name: '/routines', help: 'scheduled routines (cron) and recent runs' },
+  { name: '/grants', arg: '[revoke <id>]', help: 'folders granted to the sandbox; revoke one' },
   {
     name: '/dashboard',
     help: 'start the web UI if needed and open it (or print the ssh tunnel command)',
