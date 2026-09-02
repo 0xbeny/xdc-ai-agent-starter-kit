@@ -80,7 +80,13 @@ async function askModel(
       if (install) {
         const s = p.spinner()
         s.start(`Installing ${provider.cli}…`)
-        const r = spawnSync('sh', ['-c', provider.installCommand], { encoding: 'utf8' })
+        let r = spawnSync('sh', ['-c', provider.installCommand], { encoding: 'utf8' })
+        if (r.status !== 0 || !which(provider.cli)) {
+          // global npm prefix may be root-owned (non-nvm node) — retry into ~/.local, which the installer put on PATH
+          r = spawnSync('sh', ['-c', `${provider.installCommand} --prefix "$HOME/.local"`], {
+            encoding: 'utf8',
+          })
+        }
         if (r.status === 0 && which(provider.cli)) s.stop(`\`${provider.cli}\` installed`)
         else
           s.stop(
