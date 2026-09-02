@@ -124,6 +124,13 @@ pnpm check        # format, lint, typecheck, test
 
 Conventional commits on feature branches; never commit secrets (`.env` is ignored, gitleaks runs in CI).
 
+## Contributing
+
+Development happens in the open via GitHub issues and PRs — see [CONTRIBUTING.md](CONTRIBUTING.md)
+for setup, PR guidelines, and the release process. Security issues go through
+[private disclosure](https://github.com/0xbeny/xdc-ai-agent-starter-kit/security/advisories/new),
+never public issues.
+
 ## License
 
 MIT

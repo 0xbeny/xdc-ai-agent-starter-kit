@@ -1,0 +1,41 @@
+name: Bug report
+description: Something broke or behaves unexpectedly
+labels: ["bug", "triage"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what actually happened.
+      placeholder: Ran `pnpm setup`, chose Ollama, wizard crashed with...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. pnpm install
+        2. pnpm setup
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output / logs
+      description: Paste terminal output. Redact API keys, wallet addresses, and tokens.
+      render: shell
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Node version (`node -v`), pnpm version, and how you installed (git clone / installer script).
+      placeholder: macOS 15.6, Node 22.23.2, pnpm 10.18.2, installer script
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Kit version or commit
+      placeholder: v0.1.0 or `git rev-parse --short HEAD`
