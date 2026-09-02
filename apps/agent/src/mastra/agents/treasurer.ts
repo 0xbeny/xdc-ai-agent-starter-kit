@@ -1,7 +1,9 @@
 import { Agent } from '@mastra/core/agent'
+import { Memory } from '@mastra/memory'
 import { resolveModel } from '@xdc-ai/models'
 
 import { getKit } from '../kit.ts'
+import { createStorage } from '../storage.ts'
 
 const kit = getKit()
 const model = resolveModel(kit.config.slots.chat, kit.config.env)
@@ -20,4 +22,8 @@ export const treasurer = new Agent({
   ].join('\n'),
   model: async () => (await model) as never,
   tools: async () => (await kit.xdcaiTools()) as never,
+  memory: new Memory({
+    storage: createStorage(kit.config.env),
+    options: { lastMessages: 10 },
+  }),
 })
