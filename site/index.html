@@ -265,6 +265,49 @@
           animation-delay: 7.2s;
         }
       }
+      .cmpwrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+      }
+      table.cmp {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 760px;
+        font-size: 14.5px;
+      }
+      .cmp th,
+      .cmp td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      .cmp thead th {
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--ink2);
+      }
+      .cmp td:first-child {
+        color: var(--ink2);
+        max-width: 220px;
+      }
+      .cmp .us {
+        font-weight: 600;
+      }
+      .cmp .y {
+        color: #1e8a4c;
+      }
+      .cmp .n {
+        color: var(--ink2);
+      }
+      .cmpnote {
+        color: var(--ink2);
+        font-size: 13px;
+        margin-top: 10px;
+      }
       section {
         padding: 56px 0;
         border-top: 1px solid var(--line);
@@ -660,6 +703,114 @@
             </p>
           </div>
         </div>
+      </section>
+
+      <section id="compare">
+        <p class="eyebrow">How it compares</p>
+        <h2>Not another chat window. A worker with its own wallet.</h2>
+        <p class="sub">
+          Hosted agents are great assistants inside someone else's cloud. This kit is a permanent
+          worker on <em>your</em> machine — with a budget it can spend and rules it cannot break.
+        </p>
+        <div class="cmpwrap">
+          <table class="cmp">
+            <thead>
+              <tr>
+                <th></th>
+                <th class="us">XDC Agent Kit</th>
+                <th>Hermes Agent</th>
+                <th>Clawdbot</th>
+                <th>ChatGPT Agent</th>
+                <th>Claude Code</th>
+                <th>Grok</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Runs on your own machine</td>
+                <td class="us y">✓ Mac mini, Linux, laptop</td>
+                <td class="y">✓</td>
+                <td class="y">✓</td>
+                <td class="n">OpenAI cloud</td>
+                <td class="y">✓ (a dev tool)</td>
+                <td class="n">xAI cloud / X</td>
+              </tr>
+              <tr>
+                <td>Open source</td>
+                <td class="us y">✓ MIT — fork it, sell with it</td>
+                <td class="y">✓</td>
+                <td class="y">✓</td>
+                <td class="n">—</td>
+                <td class="n">—</td>
+                <td class="n">—</td>
+              </tr>
+              <tr>
+                <td>Choice of brain</td>
+                <td class="us y">Any API key, or your ChatGPT / Claude subscription</td>
+                <td>Nous models first</td>
+                <td>Claude-first</td>
+                <td class="n">OpenAI only</td>
+                <td class="n">Anthropic only</td>
+                <td class="n">Grok only</td>
+              </tr>
+              <tr>
+                <td>Own crypto wallet + pay-per-call marketplace</td>
+                <td class="us y">✓ USDC on XDC via x402 — spend caps, ledger, y/n approvals</td>
+                <td class="n">—</td>
+                <td class="n">—</td>
+                <td class="n">—</td>
+                <td class="n">—</td>
+                <td class="n">—</td>
+              </tr>
+              <tr>
+                <td>Human approval on money, sends &amp; permissions</td>
+                <td class="us y">
+                  ✓ one protocol everywhere: chat y/n, dashboard, Telegram buttons
+                </td>
+                <td>partial</td>
+                <td>partial</td>
+                <td>confirmations in-app</td>
+                <td>tool permissions</td>
+                <td class="n">—</td>
+              </tr>
+              <tr>
+                <td>Chat channels</td>
+                <td class="us y">Terminal · web dashboard · Telegram</td>
+                <td>Terminal · web</td>
+                <td>Messaging-first</td>
+                <td>ChatGPT app</td>
+                <td>Terminal / IDE</td>
+                <td>X / app</td>
+              </tr>
+              <tr>
+                <td>Self-improvement with a leash</td>
+                <td class="us y">
+                  ✓ writes skills, edits its soul, schedules routines — each behind your approval
+                </td>
+                <td class="y">✓ skills</td>
+                <td>partial</td>
+                <td class="n">—</td>
+                <td class="n">—</td>
+                <td class="n">—</td>
+              </tr>
+              <tr>
+                <td>Sandbox &amp; scoped access</td>
+                <td class="us y">
+                  ✓ kernel sandbox, per-folder grants, per-tool on/off switchboard
+                </td>
+                <td class="y">✓ sandbox</td>
+                <td>partial</td>
+                <td>OpenAI-managed</td>
+                <td class="y">✓ sandbox</td>
+                <td class="n">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="cmpnote">
+          Based on public docs, early 2026 — all of these are great tools and several inspired this
+          kit (Hermes especially). Spot an error? Open a PR.
+        </p>
       </section>
 
       <section id="install">
