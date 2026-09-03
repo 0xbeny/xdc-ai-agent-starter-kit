@@ -8,6 +8,7 @@ export type SlashCommand =
   | { kind: 'model'; spec?: string }
   | { kind: 'skills' }
   | { kind: 'skill'; name: string }
+  | { kind: 'skill-install'; url: string; category?: string }
   | { kind: 'tools'; args: string[] }
   | { kind: 'wallet' }
   | { kind: 'memory' }
@@ -47,6 +48,12 @@ export function parseSlash(line: string): SlashCommand {
     case 'skills':
       return { kind: 'skills' }
     case 'skill':
+      if (rest[0] === 'install' && rest[1])
+        return {
+          kind: 'skill-install',
+          url: rest[1],
+          ...(rest[2] ? { category: rest[2] } : {}),
+        }
       return arg ? { kind: 'skill', name: arg } : { kind: 'unknown', text }
     case 'tools':
       return { kind: 'tools', args: rest }
@@ -111,7 +118,11 @@ export const SLASH_COMMANDS: { name: string; arg?: string; help: string }[] = [
   { name: '/usage', help: 'tokens used by the last reply and USDC spent today' },
   { name: '/wallet', help: 'XDC AI wallet: address, balances, caps, spend' },
   { name: '/skills', help: 'list bundled and custom skills' },
-  { name: '/skill', arg: '<name>', help: 'read one skill' },
+  {
+    name: '/skill',
+    arg: '<name> | install <url>',
+    help: 'read one skill, or install a shared one from any GitHub/raw URL',
+  },
   { name: '/tools', arg: '[on|off <name>]', help: 'list tools with status, or switch one on/off' },
   { name: '/memory', help: 'show MEMORY.md (what the agent chose to remember)' },
   { name: '/routines', help: 'scheduled routines (cron) and recent runs' },
