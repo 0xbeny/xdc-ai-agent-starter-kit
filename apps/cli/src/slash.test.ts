@@ -16,6 +16,11 @@ describe('parseSlash', () => {
     expect(parseSlash('/model xai/grok-4.3')).toEqual({ kind: 'model', spec: 'xai/grok-4.3' })
     expect(parseSlash('/model')).toEqual({ kind: 'model' })
     expect(parseSlash('/skill docx')).toEqual({ kind: 'skill', name: 'docx' })
+    expect(parseSlash('/skill install https://x.y/s ops')).toEqual({
+      kind: 'skill-install',
+      url: 'https://x.y/s',
+      category: 'ops',
+    })
     expect(parseSlash('/cron')).toEqual({ kind: 'routines' })
     expect(parseSlash('/ui')).toEqual({ kind: 'dashboard', args: [] })
     expect(parseSlash('/dashboard --logs')).toEqual({ kind: 'dashboard', args: ['--logs'] })

@@ -17,6 +17,7 @@ import { completeSlash, matchApprovalId, parseSlash, slashHelpLines } from './sl
 import { gracefulExit } from 'exit-hook'
 
 import { runDoctor } from './doctor.ts'
+import { installSkill } from './skill-install.ts'
 import { ensureServiceRunning, launchdLoaded, launchdState, waitForHttp } from './service.ts'
 import { showPairingStatus } from './telegram.ts'
 import { loadOrCreateThread, rotateThread } from './thread.ts'
@@ -409,6 +410,33 @@ export async function runChat(): Promise<void> {
           `  ${skills.length} skills · /skill <name> to read one · add yours under workspace/skills/<category>/<name>/SKILL.md`,
         ),
       )
+      continue
+    }
+    if (cmd.kind === 'skill-install') {
+      const r = await installSkill(
+        {
+          workspaceDir: kit.config.workspaceDir,
+          confirm: async (meta, content) => {
+            console.log(
+              `\n${pc.yellow('review before installing')} — ${pc.bold(`${meta.category}/${meta.name}`)}: ${meta.description}`,
+            )
+            console.log(pc.dim(clip(content, 4000).replace(/^/gm, '    ')))
+            console.log(
+              pc.dim(
+                '  a skill is instructions your agent will follow — only install from authors you trust',
+              ),
+            )
+            const ans = await Promise.race([
+              rl.question(pc.cyan('  install? (y/N) › ')).catch(() => null),
+              closed,
+            ])
+            return ans !== null && /^y(es)?$/i.test(ans.trim())
+          },
+        },
+        cmd.url,
+        cmd.category,
+      )
+      console.log(r.ok ? pc.green(`  ${r.message}`) : pc.red(`  ${r.message}`))
       continue
     }
     if (cmd.kind === 'skill') {
