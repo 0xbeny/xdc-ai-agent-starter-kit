@@ -5,7 +5,14 @@ import { join } from 'node:path'
 import { JsonlApprovalStore } from '@xdc-ai/xdcai'
 import { describe, expect, it } from 'vitest'
 
-import { type ImproveDeps, runRoutineCreate, runSkillWrite, runSoulPropose } from './improve.ts'
+import {
+  type ImproveDeps,
+  runRoutineCreate,
+  runRoutineManage,
+  runRoutineUpdate,
+  runSkillWrite,
+  runSoulPropose,
+} from './improve.ts'
 
 const SKILL = `---
 name: standup
@@ -72,5 +79,31 @@ describe('self-improvement approval protocol', () => {
     const applied = await runRoutineCreate(deps, { ...input, approvalId: parked.approvalId })
     expect(applied.ok).toBe(false)
     expect(applied.message).not.toMatch(/approval/)
+  })
+})
+
+describe('routine_manage', () => {
+  it('needs no approval and surfaces a dead engine as an error', async () => {
+    const deps = freshDeps()
+    const missing = await runRoutineManage(deps, { action: 'delete', id: '' })
+    expect(missing.ok).toBe(false)
+    expect(missing.message).toMatch(/id is required/)
+    const dead = await runRoutineManage(deps, { action: 'pause', id: 'abc' })
+    expect(dead.ok).toBe(false)
+    expect(dead.message).toMatch(/unreachable/)
+    expect(await deps.approvals.list()).toHaveLength(0) // truly ungated
+  })
+})
+
+describe('routine_update', () => {
+  it('is approval-gated and validates input before parking anything', async () => {
+    const deps = freshDeps()
+    const empty = await runRoutineUpdate(deps, { id: 'r1', reason: 'x' })
+    expect(empty.ok).toBe(false)
+    expect(empty.message).toMatch(/nothing to change/)
+    expect(await deps.approvals.list()).toHaveLength(0)
+    const parked = await runRoutineUpdate(deps, { id: 'r1', cron: '0 8 * * *', reason: 'earlier' })
+    expect(parked.ok).toBe(false)
+    expect(parked.approvalId).toBeTruthy()
   })
 })

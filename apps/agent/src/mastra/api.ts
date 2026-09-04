@@ -240,6 +240,25 @@ export function kitRoutes(kit: Kit): Route[] {
       }
     }),
 
+    route(kit, '/kit/routines/:id/update', 'POST', async (c) => {
+      const mastra = c.get('mastra')
+      const id = c.req.param('id') ?? ''
+      const body = (await c.req.json()) as { cron?: unknown; prompt?: unknown; timezone?: unknown }
+      const patch = {
+        ...(typeof body.cron === 'string' && body.cron ? { cron: body.cron } : {}),
+        ...(typeof body.prompt === 'string' && body.prompt ? { prompt: body.prompt } : {}),
+        ...(typeof body.timezone === 'string' && body.timezone ? { timezone: body.timezone } : {}),
+      }
+      if (Object.keys(patch).length === 0)
+        return c.json({ error: 'nothing to change (cron, prompt, timezone)' }, 400)
+      try {
+        const routine = await mastra.schedules.update(id, patch)
+        return c.json(json({ routine }))
+      } catch (error) {
+        return c.json({ error: error instanceof Error ? error.message : String(error) }, 400)
+      }
+    }),
+
     route(kit, '/kit/routines/:id/:action', 'POST', async (c) => {
       const mastra = c.get('mastra')
       const id = c.req.param('id') ?? ''

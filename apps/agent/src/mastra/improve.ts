@@ -149,6 +149,112 @@ export async function runRoutineCreate(
   )
 }
 
+async function kitApi(
+  deps: ImproveDeps,
+  path: string,
+  method: 'GET' | 'POST',
+): Promise<{ ok: boolean; status: number; body: unknown }> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${deps.agentPort}${path}`, {
+      method,
+      redirect: 'manual',
+      headers: deps.apiToken ? { 'x-kit-token': deps.apiToken } : {},
+    })
+    const ok = res.ok || (res.status >= 300 && res.status < 400) // action routes redirect on success
+    const body: unknown = ok && res.status < 300 ? await res.json().catch(() => ({})) : {}
+    return { ok, status: res.status, body }
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      body: {
+        error: `routine engine unreachable on :${deps.agentPort}: ${error instanceof Error ? error.message : String(error)}`,
+      },
+    }
+  }
+}
+
+export async function runRoutinesList(deps: ImproveDeps): Promise<unknown> {
+  const r = await kitApi(deps, '/kit/routines', 'GET')
+  if (!r.ok)
+    return { ok: false, message: (r.body as { error?: string }).error ?? `HTTP ${r.status}` }
+  return { ok: true, ...(r.body as object) }
+}
+
+/** Pausing/resuming/deleting only reduces or restores already-approved autonomy — no approval needed. */
+export async function runRoutineManage(
+  deps: ImproveDeps,
+  input: { action: 'pause' | 'resume' | 'delete' | 'run'; id: string },
+): Promise<ImproveResult> {
+  if (!input.id.trim()) return { ok: false, message: 'id is required (routines_list shows them)' }
+  const r = await kitApi(
+    deps,
+    `/kit/routines/${encodeURIComponent(input.id)}/${input.action}`,
+    'POST',
+  )
+  if (!r.ok)
+    return { ok: false, message: (r.body as { error?: string }).error ?? `HTTP ${r.status}` }
+  appendDailyLog(deps.workspaceDir, `routine ${input.action}: ${input.id}`)
+  return {
+    ok: true,
+    message: `routine ${input.id} ${input.action}${input.action === 'run' ? ' started' : input.action.endsWith('e') ? 'd' : 'ed'}`,
+  }
+}
+
+/** Changing WHAT runs unattended is a behaviour change → approval-gated like routine_create. */
+export async function runRoutineUpdate(
+  deps: ImproveDeps,
+  input: {
+    id: string
+    cron?: string | undefined
+    prompt?: string | undefined
+    timezone?: string | undefined
+    reason: string
+    approvalId?: string | undefined
+  },
+): Promise<ImproveResult> {
+  if (!input.id.trim()) return { ok: false, message: 'id is required (routines_list shows them)' }
+  if (!input.cron && !input.prompt && !input.timezone)
+    return { ok: false, message: 'nothing to change — pass cron, prompt and/or timezone' }
+  return gated(
+    deps,
+    'routine_update',
+    { ...input },
+    `self-improvement: change routine ${input.id}${input.cron ? ` cron→${input.cron}` : ''}${input.prompt ? ' (new prompt)' : ''} — ${input.reason}`,
+    JSON.stringify(
+      { id: input.id, cron: input.cron, prompt: input.prompt, timezone: input.timezone },
+      null,
+      2,
+    ),
+    async () => {
+      const res = await fetch(
+        `http://127.0.0.1:${deps.agentPort}/kit/routines/${encodeURIComponent(input.id)}/update`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(deps.apiToken ? { 'x-kit-token': deps.apiToken } : {}),
+          },
+          body: JSON.stringify({
+            cron: input.cron,
+            prompt: input.prompt,
+            timezone: input.timezone,
+          }),
+        },
+      ).catch((error: unknown) => {
+        throw new Error(
+          `routine engine unreachable on :${deps.agentPort}: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      })
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok)
+        return { ok: false, message: `routine engine refused: ${body.error ?? res.status}` }
+      appendDailyLog(deps.workspaceDir, `routine_update: ${input.id} ${input.reason.slice(0, 120)}`)
+      return { ok: true, message: `routine ${input.id} updated — routines_list to confirm` }
+    },
+  )
+}
+
 const approvalId = z
   .string()
   .optional()
@@ -182,6 +288,36 @@ export function createImproveTools(deps: ImproveDeps) {
         approvalId,
       }),
       execute: async (input) => runSoulPropose(deps, input),
+    }),
+    routines_list: createTool({
+      id: 'routines_list',
+      description: 'List scheduled routines (id, cron, prompt, status) and recent runs.',
+      inputSchema: z.object({}),
+      execute: async () => runRoutinesList(deps),
+    }),
+    routine_manage: createTool({
+      id: 'routine_manage',
+      description:
+        'Pause, resume, delete, or run-now an existing routine by id (routines_list first). No approval needed — this only reduces or restores already-approved behaviour. To MODIFY a routine: routine_create the replacement (approval-gated), then delete the old one.',
+      inputSchema: z.object({
+        action: z.enum(['pause', 'resume', 'delete', 'run']),
+        id: z.string(),
+      }),
+      execute: async (input) => runRoutineManage(deps, input),
+    }),
+    routine_update: createTool({
+      id: 'routine_update',
+      description:
+        'Change an existing routine in place (cron, prompt, timezone). Approval-gated: explain the change, wait for the y/n, re-call with the approvalId.',
+      inputSchema: z.object({
+        id: z.string(),
+        cron: z.string().optional(),
+        prompt: z.string().optional(),
+        timezone: z.string().optional(),
+        reason: z.string(),
+        approvalId,
+      }),
+      execute: async (input) => runRoutineUpdate(deps, input),
     }),
     routine_create: createTool({
       id: 'routine_create',
