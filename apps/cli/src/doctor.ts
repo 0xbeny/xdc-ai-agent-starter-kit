@@ -243,11 +243,19 @@ export async function runDoctor(root: string): Promise<number> {
   const head = await run('git', ['rev-parse', '--short', 'HEAD'], root)
   const dirty = await run('git', ['status', '--porcelain', '-uno'], root)
   const dirtyCount = dirty.out.split('\n').filter(Boolean).length
+  const buildHeadFile = join(root, 'data', 'build-head')
+  const fullHead = (await run('git', ['rev-parse', 'HEAD'], root)).out.trim()
+  const buildHead = existsSync(buildHeadFile) ? readFileSync(buildHeadFile, 'utf8').trim() : ''
+  const stale = buildHead !== '' && fullHead !== '' && buildHead !== fullHead
   report({
     name: 'version',
-    status: dirtyCount > 0 ? 'warn' : 'ok',
-    detail: `${head.out.trim() || 'unknown'}${dirtyCount ? ` · ${dirtyCount} locally modified file(s)` : ''}`,
-    ...(dirtyCount ? { fix: 'xdc-agent update refuses on dirty files — revert local edits' } : {}),
+    status: stale ? 'fail' : dirtyCount > 0 ? 'warn' : 'ok',
+    detail: `${head.out.trim() || 'unknown'}${dirtyCount ? ` · ${dirtyCount} locally modified file(s)` : ''}${stale ? ` · RUNNING BUILD IS STALE (built at ${buildHead.slice(0, 7)})` : ''}`,
+    ...(stale
+      ? { fix: 'xdc-agent update (now detects and rebuilds stale builds)' }
+      : dirtyCount
+        ? { fix: 'xdc-agent update refuses on dirty files — revert local edits' }
+        : {}),
   })
 
   let agentUp = await waitForHttp('http://127.0.0.1:4111/api', 2000)
