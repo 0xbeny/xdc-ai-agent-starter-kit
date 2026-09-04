@@ -22,18 +22,26 @@ fi
 say "Fetching $REMOTE/$BRANCH"
 git fetch --quiet "$REMOTE" "$BRANCH"
 if [ "$(git rev-parse HEAD)" = "$(git rev-parse "$REMOTE/$BRANCH")" ]; then
-  say "Already up to date ($before)"; exit 0
+  # The repo being current does NOT mean the BUILD is: a past update that pulled and then failed
+  # at the build step leaves a stale bundle running forever. The marker written after every
+  # successful build is the truth.
+  if [ -f data/build-head ] && [ "$(cat data/build-head)" = "$(git rev-parse HEAD)" ]; then
+    say "Already up to date ($before) — build matches"; exit 0
+  fi
+  say "Repo is current ($before) but the build is stale or unverified — rebuilding"
+else
+  git pull --ff-only --quiet "$REMOTE" "$BRANCH" || die "Fast-forward failed; your branch has diverged from $REMOTE/$BRANCH"
+  after=$(git rev-parse --short HEAD)
+  say "Updated $before → $after"
+  git --no-pager log --oneline "$before..$after" | sed 's/^/    /' | head -20
 fi
-git pull --ff-only --quiet "$REMOTE" "$BRANCH" || die "Fast-forward failed; your branch has diverged from $REMOTE/$BRANCH"
-after=$(git rev-parse --short HEAD)
-say "Updated $before → $after"
-git --no-pager log --oneline "$before..$after" | sed 's/^/    /' | head -20
 
 say "Installing dependencies"; pnpm install --frozen-lockfile
 say "Adding any new workspace templates (edited files are left alone)"
 node --experimental-strip-types -e "import('./packages/workspace/src/seed.ts').then(m=>{const a=m.addMissingFromTemplates('workspace','templates/workspace');console.log(a.length?'    added: '+a.join(', '):'    nothing new')})" 2>/dev/null || true
 
 say "Rebuilding"; REBUILD=1 pnpm --filter @xdc-ai/agent build >/dev/null && pnpm --filter @xdc-ai/dashboard build >/dev/null || die "Build failed — run 'pnpm check' to see why"
+git rev-parse HEAD > data/build-head
 
 if [ "${1:-}" != "--no-restart" ]; then
   if [ "$(uname)" = "Darwin" ] && launchctl list 2>/dev/null | grep -q tech.xdcai.agent; then
