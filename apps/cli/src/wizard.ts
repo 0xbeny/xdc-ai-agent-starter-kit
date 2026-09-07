@@ -241,6 +241,27 @@ export async function runSetup(paths: WizardPaths): Promise<void> {
     }
   }
 
+  // 2. knowledge base / embeddings
+  const hasOpenAI = Boolean(updates.OPENAI_API_KEY ?? current.OPENAI_API_KEY)
+  const wantKnowledge = await p.confirm({
+    message:
+      'Enable the knowledge base + semantic recall? (stores documents searchably; needs an embedding model, costs ~cents)',
+    initialValue: hasOpenAI,
+  })
+  bail(wantKnowledge)
+  if (wantKnowledge) {
+    const def = hasOpenAI ? 'openai/text-embedding-3-small' : 'google/gemini-embedding-001'
+    const spec = await p.text({
+      message: 'Embedding model (provider/model)',
+      placeholder: def,
+      defaultValue: def,
+    })
+    bail(spec)
+    updates.MODEL_EMBED = (spec as string).trim() || def
+  } else {
+    updates.MODEL_EMBED = ''
+  }
+
   // 2. fast model
   const separateFast = await p.confirm({
     message: 'Use a separate cheap/fast model for summaries and background memory work?',

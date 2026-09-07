@@ -9,7 +9,7 @@ import { createGrantTools } from '../grants.ts'
 import { createImproveTools, type ScheduleEngine } from '../improve.ts'
 import { getKit } from '../kit.ts'
 import { kitFacts } from '../kit-facts.ts'
-import { fetchTools, sandbox } from '../shared-tools.ts'
+import { embedder, fetchTools, knowledgeStore, knowledgeTools, sandbox } from '../shared-tools.ts'
 import { createToolPolicyTools } from '../tool-policy.ts'
 import { createStorage } from '../storage.ts'
 
@@ -37,7 +37,7 @@ export const assistant = new Agent({
   name: 'Assistant',
   // Re-read on every run so edits to SOUL.md / MEMORY.md from the dashboard or the memory tool apply next turn.
   instructions: () =>
-    `${loadWorkspace(config.workspaceDir).prompt}\n\n${kitFacts({ walletConnected: kit.walletConnected(), sandbox: Boolean(sandbox), skills: listSkills(config.workspaceDir).length })}`,
+    `${loadWorkspace(config.workspaceDir).prompt}\n\n${kitFacts({ walletConnected: kit.walletConnected(), sandbox: Boolean(sandbox), skills: listSkills(config.workspaceDir).length, knowledge: Boolean(knowledgeStore) })}`,
   model: async () => (await model) as never,
   tools: async () =>
     kit.toolPolicy.filter({
@@ -68,6 +68,7 @@ export const assistant = new Agent({
           })
         : {}),
       ...fetchTools,
+      ...knowledgeTools,
       ...(sandbox?.tools ?? {}),
     }),
   // Delegation: sub-agents appear as tools `agent-researcher` / `agent-treasurer`; the researcher may run in the background.
@@ -78,6 +79,12 @@ export const assistant = new Agent({
   },
   memory: new Memory({
     storage: createStorage(config.env),
-    options: { lastMessages: 20 },
+    ...(embedder && knowledgeStore
+      ? {
+          vector: (await import('../shared-tools.ts')).knowledgeVector as never,
+          embedder: embedder as never,
+          options: { lastMessages: 20, semanticRecall: { topK: 4, messageRange: 2 } },
+        }
+      : { options: { lastMessages: 20 } }),
   }),
 })

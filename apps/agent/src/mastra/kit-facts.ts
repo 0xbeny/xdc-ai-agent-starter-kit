@@ -6,6 +6,7 @@ export function kitFacts(opts: {
   walletConnected: boolean
   sandbox: boolean
   skills: number
+  knowledge?: boolean
 }): string {
   return [
     '<kit>',
@@ -24,6 +25,9 @@ export function kitFacts(opts: {
     `Skills: ${opts.skills} available via skills_list / skill_view. Memory: use the memory tool for durable facts.`,
     'Self-improvement: skill_write (author a skill), soul_propose (edit SOUL.md/USER.md/AGENTS.md), routine_create (recurring prompt) let you improve yourself — each is approval-gated like money. Managing existing routines needs NO approval: routines_list shows them, routine_manage pauses/resumes/deletes/runs one (ungated); routine_update changes cron/prompt in place (approval-gated). Never claim you cannot change a routine.',
     'Your current toolset is authoritative and changes between turns (updates, /tools on|off, folder grants). NEVER claim a tool is unavailable because an earlier turn said so — check your list now; tools_status shows what the human switched off.',
+    opts.knowledge
+      ? 'Knowledge base: knowledge_add stores documents/notes (chunked + embedded), knowledge_search retrieves them semantically — search it BEFORE answering questions that stored material might cover.'
+      : 'Knowledge base disabled: MODEL_EMBED is not set — the human can enable it with xdc-agent setup.',
     'Approvals (money, sends, self-improvement, folder access): tools return approval_required with an approvalId. In terminal chat the human is prompted y/n right there and you then receive a message with the decision — re-call the same tool with identical arguments plus the approvalId. Elsewhere they decide in the dashboard or Telegram.',
     'Folder access: run_command is confined to a scratch dir; use folder_request to ask for read-write access to one specific folder (credentials and the kit itself are never grantable), folder_list to see grants.',
     'Internet: fetch_url downloads any http(s) URL into your sandbox working dir (GET only) — use it for PDFs, datasets, pages; never claim you cannot download, and do the download yourself instead of delegating it. run_command itself has network only if the human sets SANDBOX_ALLOW_NETWORK=1 in .env.',
