@@ -14,12 +14,32 @@ import { z } from 'zod'
  * Self-improvement tools (ADR-0008 approval protocol): the agent proposes, a human approves in the
  * dashboard/Telegram/CLI, then the same call with the approvalId applies the change.
  */
+export interface ScheduleEngine {
+  list(): Promise<unknown[]>
+  create(input: Record<string, unknown>): Promise<unknown>
+  update(id: string, patch: Record<string, unknown>): Promise<unknown>
+  pause(id: string): Promise<unknown>
+  resume(id: string): Promise<unknown>
+  delete(id: string): Promise<unknown>
+  run(id: string): Promise<unknown>
+}
+
 export interface ImproveDeps {
   workspaceDir: string
   approvals: ApprovalStore
-  /** Kit API self-call target for routine_create (the schedule engine lives in the server). */
+  /** Kit API fallback target when no in-process engine is available. */
   agentPort: number
   apiToken?: string
+  /** In-process schedule engine — preferred: routines work with the HTTP service down. */
+  getSchedules?: () => Promise<ScheduleEngine>
+}
+
+async function engine(deps: ImproveDeps): Promise<ScheduleEngine | null> {
+  try {
+    return deps.getSchedules ? await deps.getSchedules() : null
+  } catch {
+    return null
+  }
 }
 
 export interface ImproveResult {
@@ -117,6 +137,30 @@ export async function runRoutineCreate(
     `self-improvement: new routine "${input.name ?? input.prompt.slice(0, 40)}" (cron ${input.cron}) — will run unattended`,
     JSON.stringify({ cron: input.cron, prompt: input.prompt, timezone: input.timezone }, null, 2),
     async () => {
+      const eng = await engine(deps)
+      if (eng) {
+        try {
+          await eng.create({
+            agentId: 'assistant',
+            cron: input.cron,
+            prompt: input.prompt,
+            ...(input.timezone ? { timezone: input.timezone } : {}),
+          })
+          appendDailyLog(
+            deps.workspaceDir,
+            `routine_create: ${input.cron} ${input.prompt.slice(0, 120)}`,
+          )
+          return {
+            ok: true,
+            message: `routine created (cron ${input.cron}) — manage it on /routines`,
+          }
+        } catch (error) {
+          return {
+            ok: false,
+            message: `routine engine refused: ${error instanceof Error ? error.message : String(error)}`,
+          }
+        }
+      }
       let res: Response
       try {
         res = await fetch(`http://127.0.0.1:${deps.agentPort}/kit/routines`, {
@@ -175,6 +219,14 @@ async function kitApi(
 }
 
 export async function runRoutinesList(deps: ImproveDeps): Promise<unknown> {
+  const eng = await engine(deps)
+  if (eng) {
+    try {
+      return { ok: true, routines: await eng.list() }
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : String(error) }
+    }
+  }
   const r = await kitApi(deps, '/kit/routines', 'GET')
   if (!r.ok)
     return { ok: false, message: (r.body as { error?: string }).error ?? `HTTP ${r.status}` }
@@ -187,6 +239,19 @@ export async function runRoutineManage(
   input: { action: 'pause' | 'resume' | 'delete' | 'run'; id: string },
 ): Promise<ImproveResult> {
   if (!input.id.trim()) return { ok: false, message: 'id is required (routines_list shows them)' }
+  const eng = await engine(deps)
+  if (eng) {
+    try {
+      await eng[input.action](input.id)
+      appendDailyLog(deps.workspaceDir, `routine ${input.action}: ${input.id}`)
+      return {
+        ok: true,
+        message: `routine ${input.id} ${input.action}${input.action === 'run' ? ' started' : input.action.endsWith('e') ? 'd' : 'ed'}`,
+      }
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : String(error) }
+    }
+  }
   const r = await kitApi(
     deps,
     `/kit/routines/${encodeURIComponent(input.id)}/${input.action}`,
@@ -227,6 +292,26 @@ export async function runRoutineUpdate(
       2,
     ),
     async () => {
+      const eng = await engine(deps)
+      if (eng) {
+        try {
+          await eng.update(input.id, {
+            ...(input.cron ? { cron: input.cron } : {}),
+            ...(input.prompt ? { prompt: input.prompt } : {}),
+            ...(input.timezone ? { timezone: input.timezone } : {}),
+          })
+          appendDailyLog(
+            deps.workspaceDir,
+            `routine_update: ${input.id} ${input.reason.slice(0, 120)}`,
+          )
+          return { ok: true, message: `routine ${input.id} updated — routines_list to confirm` }
+        } catch (error) {
+          return {
+            ok: false,
+            message: `routine engine refused: ${error instanceof Error ? error.message : String(error)}`,
+          }
+        }
+      }
       const res = await fetch(
         `http://127.0.0.1:${deps.agentPort}/kit/routines/${encodeURIComponent(input.id)}/update`,
         {
