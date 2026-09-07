@@ -15,6 +15,8 @@ export interface HarnessDescriptor {
   cli: string
   installCommand: string
   loginCommand: string
+  /** File whose presence means the CLI is signed in. */
+  authFile?: string
   label: string
   note: string
 }
@@ -36,6 +38,7 @@ export const HARNESS_PROVIDERS = {
     defaultModel: 'gpt-5.5',
     cli: 'codex',
     installCommand: 'npm install -g @openai/codex',
+    authFile: '~/.codex/auth.json',
     loginCommand: 'codex login',
     label: 'Codex CLI (your ChatGPT subscription, local CLI)',
     note: 'Routes through the OpenAI Codex CLI login (~/.codex/auth.json) or OPENAI_API_KEY.',

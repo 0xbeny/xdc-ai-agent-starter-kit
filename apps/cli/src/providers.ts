@@ -13,6 +13,7 @@ export interface ProviderChoice {
   cli?: string
   installCommand?: string
   loginCommand?: string
+  authFile?: string
 }
 
 export const PROVIDERS: ProviderChoice[] = [
@@ -97,6 +98,7 @@ export const PROVIDERS: ProviderChoice[] = [
     envKey: null,
     cli: HARNESS_PROVIDERS.codex.cli,
     installCommand: HARNESS_PROVIDERS.codex.installCommand,
+    authFile: HARNESS_PROVIDERS.codex.authFile,
     loginCommand: HARNESS_PROVIDERS.codex.loginCommand,
   },
   {
@@ -122,4 +124,64 @@ export function modelSpecString(providerId: string, model: string, url?: string)
 export function envKeyFor(providerId: string): string | null {
   const known = providerById(providerId)
   return known ? known.envKey : providerEnvKey(providerId)
+}
+
+/* ── live model listing so users pick instead of typing ─────────────────── */
+
+const OPENAI_STYLE: Record<string, string> = {
+  openai: 'https://api.openai.com/v1/models',
+  xai: 'https://api.x.ai/v1/models',
+  moonshot: 'https://api.moonshot.ai/v1/models',
+  openrouter: 'https://openrouter.ai/api/v1/models',
+  groq: 'https://api.groq.com/openai/v1/models',
+  deepseek: 'https://api.deepseek.com/v1/models',
+}
+
+const NOT_CHAT = /embed|whisper|tts|dall-e|audio|realtime|moderation|image|transcribe/i
+
+/** Best-effort list of chat model ids for a provider; [] means "fall back to typing". */
+export async function listModels(
+  providerId: string,
+  key?: string,
+  baseUrl?: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<string[]> {
+  const timeout = AbortSignal.timeout(8000)
+  try {
+    if (providerId === 'claude-code') return ['sonnet', 'opus', 'haiku']
+    if (providerId === 'ollama') {
+      const res = await fetchFn('http://localhost:11434/api/tags', { signal: timeout })
+      const body = (await res.json()) as { models?: { name: string }[] }
+      return (body.models ?? []).map((m) => m.name)
+    }
+    if (providerId === 'anthropic') {
+      if (!key) return []
+      const res = await fetchFn('https://api.anthropic.com/v1/models?limit=100', {
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        signal: timeout,
+      })
+      if (!res.ok) return []
+      const body = (await res.json()) as { data?: { id: string }[] }
+      return (body.data ?? []).map((m) => m.id)
+    }
+    const url =
+      providerId === 'custom'
+        ? baseUrl
+          ? `${baseUrl.replace(/\/$/, '')}/models`
+          : ''
+        : OPENAI_STYLE[providerId]
+    if (!url) return []
+    const res = await fetchFn(url, {
+      headers: key ? { authorization: `Bearer ${key}` } : {},
+      signal: timeout,
+    })
+    if (!res.ok) return []
+    const body = (await res.json()) as { data?: { id: string }[] }
+    return (body.data ?? [])
+      .map((m) => m.id)
+      .filter((id) => !NOT_CHAT.test(id))
+      .sort((a, b) => b.localeCompare(a))
+  } catch {
+    return []
+  }
 }
