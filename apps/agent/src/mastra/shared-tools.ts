@@ -1,6 +1,12 @@
 import { join } from 'node:path'
 
 import { createFetchTools } from './fetch-url.ts'
+import {
+  createEmbedder,
+  createKnowledgeTools,
+  createKnowledgeVector,
+  KnowledgeStore,
+} from './knowledge.ts'
 import { getKit } from './kit.ts'
 import { createSandboxTools, sandboxMode } from './sandbox.ts'
 
@@ -21,3 +27,18 @@ export const sandbox =
 export const fetchTools = createFetchTools(
   sandbox ? sandbox.dir : join(config.dataDir, 'downloads'),
 )
+
+export const embedder = createEmbedder(config.slots.embed)
+export const knowledgeVector = embedder
+  ? createKnowledgeVector(config.env, config.dataDir)
+  : undefined
+export const knowledgeStore =
+  embedder && knowledgeVector
+    ? new KnowledgeStore({
+        vector: knowledgeVector,
+        embedder,
+        registryFile: `${config.dataDir}/knowledge-sources.json`,
+      })
+    : undefined
+export const knowledgeTools = knowledgeStore ? createKnowledgeTools(knowledgeStore) : {}
+if (knowledgeStore) console.info('[agent] knowledge base: enabled (semantic recall on)')

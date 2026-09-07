@@ -10,6 +10,7 @@ const NAV = [
   { href: '/approvals', label: 'Approvals' },
   { href: '/routines', label: 'Routines' },
   { href: '/memory', label: 'Memory' },
+  { href: '/knowledge', label: 'Knowledge' },
   { href: '/wallet', label: 'Wallet' },
   { href: '/connections', label: 'Connections' },
   { href: '/settings', label: 'Settings' },

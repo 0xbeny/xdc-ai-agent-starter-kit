@@ -288,6 +288,55 @@ export function kitRoutes(kit: Kit): Route[] {
       return c.json(json({ disabled: kit.toolPolicy.disabled() }))
     }),
 
+    route(kit, '/kit/knowledge', 'GET', async (c) => {
+      const { knowledgeStore } = await import('./shared-tools.ts')
+      if (!knowledgeStore) return c.json({ enabled: false, sources: [] })
+      return c.json(json({ enabled: true, sources: knowledgeStore.sources() }))
+    }),
+
+    route(kit, '/kit/knowledge/search', 'GET', async (c) => {
+      const { knowledgeStore } = await import('./shared-tools.ts')
+      const q = c.req.query('q') ?? ''
+      if (!knowledgeStore) return c.json({ enabled: false, hits: [] })
+      if (!q.trim()) return c.json({ enabled: true, hits: [] })
+      return c.json(json({ enabled: true, hits: await knowledgeStore.search(q, 8) }))
+    }),
+
+    route(kit, '/kit/knowledge/add', 'POST', async (c) => {
+      const { knowledgeStore } = await import('./shared-tools.ts')
+      if (!knowledgeStore)
+        return c.json({ error: 'knowledge base disabled — set MODEL_EMBED' }, 400)
+      const body = (await c.req.json()) as { text?: unknown; source?: unknown }
+      if (
+        typeof body.text !== 'string' ||
+        !body.text.trim() ||
+        typeof body.source !== 'string' ||
+        !body.source.trim()
+      )
+        return c.json({ error: 'text and source are required' }, 400)
+      try {
+        const r = await knowledgeStore.add(body.text, body.source)
+        return c.redirect(
+          `${dashboardUrl(kit)}/knowledge?added=${encodeURIComponent(body.source)}&chunks=${r.chunks}`,
+        )
+      } catch (error) {
+        return c.json({ error: error instanceof Error ? error.message : String(error) }, 400)
+      }
+    }),
+
+    route(kit, '/kit/knowledge/remove', 'POST', async (c) => {
+      const { knowledgeStore } = await import('./shared-tools.ts')
+      if (!knowledgeStore) return c.json({ error: 'knowledge base disabled' }, 400)
+      const body = (await c.req.json()) as { source?: unknown }
+      if (typeof body.source !== 'string') return c.json({ error: 'source is required' }, 400)
+      try {
+        await knowledgeStore.remove(body.source)
+        return c.redirect(`${dashboardUrl(kit)}/knowledge`)
+      } catch (error) {
+        return c.json({ error: error instanceof Error ? error.message : String(error) }, 400)
+      }
+    }),
+
     route(kit, '/kit/grants', 'GET', async (c) => c.json(json({ grants: kit.grants.list() }))),
 
     route(kit, '/kit/grants/:id/revoke', 'POST', async (c) => {

@@ -3,7 +3,7 @@ import { Memory } from '@mastra/memory'
 import { resolveModel } from '@xdc-ai/models'
 
 import { getKit } from '../kit.ts'
-import { fetchTools, sandbox } from '../shared-tools.ts'
+import { fetchTools, knowledgeTools, sandbox } from '../shared-tools.ts'
 import { createStorage } from '../storage.ts'
 
 const kit = getKit()
@@ -31,7 +31,12 @@ export const researcher = new Agent({
           ),
       ),
     )
-    return kit.toolPolicy.filter({ ...readOnly, ...fetchTools, ...(sandbox?.tools ?? {}) }) as never
+    return kit.toolPolicy.filter({
+      ...readOnly,
+      ...fetchTools,
+      ...knowledgeTools,
+      ...(sandbox?.tools ?? {}),
+    }) as never
   },
   memory: new Memory({
     storage: createStorage(kit.config.env),
