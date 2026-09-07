@@ -20,7 +20,7 @@ import pc from 'picocolors'
 import { ensureWorkspace } from '@xdc-ai/workspace'
 
 import { mergeEnv, parseEnv } from './env-file.ts'
-import { envKeyFor, modelSpecString, PROVIDERS, providerById } from './providers.ts'
+import { envKeyFor, listModels, modelSpecString, PROVIDERS, providerById } from './providers.ts'
 import { smokeTest } from './smoke.ts'
 
 export interface WizardPaths {
@@ -106,18 +106,17 @@ async function askModel(
     }
   }
   if (provider.cli && which(provider.cli) && provider.loginCommand) {
-    p.log.info(
-      `${provider.label} bills your subscription — no API key needed. If you have never signed in, the test below will fail and I will run \`${provider.loginCommand}\` for you.`,
-    )
+    p.log.info(`${provider.label} bills your subscription — no API key needed.`)
+    const authPath = provider.authFile?.replace(/^~\//, `${process.env.HOME ?? ''}/`)
+    if (authPath && !existsSync(authPath)) {
+      const login = await p.confirm({
+        message: `You have not signed in to \`${provider.cli}\` yet. Run \`${provider.loginCommand}\` now? (opens a browser)`,
+        initialValue: true,
+      })
+      bail(login)
+      if (login) spawnSync('sh', ['-c', provider.loginCommand], { stdio: 'inherit' })
+    }
   }
-
-  const model = await p.text({
-    message: `${label}: model id`,
-    placeholder: provider.defaultModel,
-    defaultValue: provider.defaultModel,
-    validate: (v) => (v?.trim() || provider.defaultModel ? undefined : 'Model id is required'),
-  })
-  bail(model)
 
   let url: string | undefined
   if (provider.askUrl) {
@@ -148,8 +147,47 @@ async function askModel(
     bail(key)
     if ((key as string).trim()) env[keyName] = (key as string).trim()
   }
+
+  // With the key in hand, show what this provider actually offers instead of making the user type.
+  let modelChoice = ''
+  const spin = p.spinner()
+  spin.start('Fetching available models…')
+  const models = await listModels(
+    provider.id,
+    keyName ? (env[keyName] ?? current[keyName]) : undefined,
+    url,
+  )
+  spin.stop(
+    models.length
+      ? `${models.length} model${models.length > 1 ? 's' : ''} available`
+      : 'Could not list models — type the id',
+  )
+  if (models.length > 0) {
+    const shown = models.slice(0, 40)
+    const sel = await p.select({
+      message: `${label}: pick a model`,
+      options: [
+        ...shown.map((m) => ({ value: m, label: m })),
+        { value: '__other__', label: 'Type another model id…' },
+      ],
+      initialValue: shown.includes(provider.defaultModel) ? provider.defaultModel : shown[0],
+    })
+    bail(sel)
+    modelChoice = sel as string
+  }
+  if (!modelChoice || modelChoice === '__other__') {
+    const typed = await p.text({
+      message: `${label}: model id`,
+      placeholder: provider.defaultModel,
+      defaultValue: provider.defaultModel,
+      validate: (v) => (v?.trim() || provider.defaultModel ? undefined : 'Model id is required'),
+    })
+    bail(typed)
+    modelChoice = (typed as string) || provider.defaultModel
+  }
+
   return {
-    spec: modelSpecString(provider.id, (model as string) || provider.defaultModel, url),
+    spec: modelSpecString(provider.id, modelChoice, url),
     env,
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { envKeyFor, modelSpecString, PROVIDERS, providerById } from './providers.ts'
+import { listModels, envKeyFor, modelSpecString, PROVIDERS, providerById } from './providers.ts'
 
 describe('providers', () => {
   it('lists every provider family the plan promised', () => {
@@ -34,5 +34,38 @@ describe('providers', () => {
     expect(envKeyFor('ollama')).toBeNull()
     expect(envKeyFor('together')).toBe('TOGETHER_API_KEY')
     expect(providerById('codex')?.cli).toBe('codex')
+  })
+})
+
+describe('listModels', () => {
+  const fake = (body: unknown, ok = true) =>
+    (async () => ({ ok, json: async () => body })) as unknown as typeof fetch
+  it('parses OpenAI-style lists, filters non-chat models, newest first', async () => {
+    const models = await listModels(
+      'openai',
+      'k',
+      undefined,
+      fake({
+        data: [
+          { id: 'gpt-5.5' },
+          { id: 'gpt-5.6' },
+          { id: 'text-embedding-4' },
+          { id: 'whisper-2' },
+        ],
+      }),
+    )
+    expect(models).toEqual(['gpt-5.6', 'gpt-5.5'])
+  })
+  it('parses ollama tags and static claude-code aliases', async () => {
+    expect(
+      await listModels('ollama', undefined, undefined, fake({ models: [{ name: 'qwen3:8b' }] })),
+    ).toEqual(['qwen3:8b'])
+    expect(await listModels('claude-code')).toEqual(['sonnet', 'opus', 'haiku'])
+  })
+  it('returns [] on errors, missing keys and unknown providers', async () => {
+    expect(await listModels('anthropic', undefined)).toEqual([])
+    expect(await listModels('openai', 'k', undefined, fake({}, false))).toEqual([])
+    expect(await listModels('codex')).toEqual([])
+    expect(await listModels('nope')).toEqual([])
   })
 })
