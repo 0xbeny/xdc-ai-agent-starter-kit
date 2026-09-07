@@ -526,6 +526,38 @@ export async function runChat(): Promise<void> {
       continue
     }
     if (cmd.kind === 'routines') {
+      const ACTIONS: Record<string, 'pause' | 'resume' | 'delete' | 'run'> = {
+        pause: 'pause',
+        stop: 'pause',
+        resume: 'resume',
+        start: 'resume',
+        delete: 'delete',
+        remove: 'delete',
+        rm: 'delete',
+        run: 'run',
+      }
+      const action = ACTIONS[cmd.args[0] ?? '']
+      if (action && cmd.args[1]) {
+        try {
+          const list = (await mastra.schedules.list()) as { id: string }[]
+          const hit = matchApprovalId(list, cmd.args[1])
+          if (!hit) {
+            console.log(
+              pc.red(`  no unique routine matches "${cmd.args[1]}" — /routines lists ids`),
+            )
+            continue
+          }
+          await mastra.schedules[action](hit.id)
+          console.log(
+            pc.green(
+              `  ${hit.id.slice(0, 8)} ${action}${action === 'run' ? ' started' : action.endsWith('e') ? 'd' : 'ed'}`,
+            ),
+          )
+        } catch (error) {
+          console.log(pc.red(`  ${error instanceof Error ? error.message : String(error)}`))
+        }
+        continue
+      }
       try {
         const list = (await mastra.schedules.list()) as {
           id: string
@@ -541,7 +573,7 @@ export async function runChat(): Promise<void> {
                     `  ${pc.yellow(r.id.slice(0, 8))}  ${r.cron.padEnd(14)} ${r.status.padEnd(7)} ${(r.prompt ?? '').slice(0, 70)}`,
                 )
                 .join('\n')
-            : pc.dim('  no routines yet — create them on the dashboard → Routines'),
+            : pc.dim('  no routines yet — just ask the agent, or dashboard → Routines'),
         )
         const runs = kit.routineRuns.list(5)
         if (runs.length)

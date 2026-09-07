@@ -13,7 +13,7 @@ export type SlashCommand =
   | { kind: 'wallet' }
   | { kind: 'memory' }
   | { kind: 'usage' }
-  | { kind: 'routines' }
+  | { kind: 'routines'; args: string[] }
   | { kind: 'retry' }
   | { kind: 'dashboard'; args: string[] }
   | { kind: 'grants'; args: string[] }
@@ -65,7 +65,7 @@ export function parseSlash(line: string): SlashCommand {
       return { kind: 'usage' }
     case 'routines':
     case 'cron':
-      return { kind: 'routines' }
+      return { kind: 'routines', args: rest }
     case 'retry':
       return { kind: 'retry' }
     case 'grants':
@@ -125,7 +125,11 @@ export const SLASH_COMMANDS: { name: string; arg?: string; help: string }[] = [
   },
   { name: '/tools', arg: '[on|off <name>]', help: 'list tools with status, or switch one on/off' },
   { name: '/memory', help: 'show MEMORY.md (what the agent chose to remember)' },
-  { name: '/routines', help: 'scheduled routines (cron) and recent runs' },
+  {
+    name: '/routines',
+    arg: '[pause|resume|delete|run <id>]',
+    help: 'list routines, or act on one directly (id or prefix)',
+  },
   { name: '/grants', arg: '[revoke <id>]', help: 'folders granted to the sandbox; revoke one' },
   { name: '/doctor', help: 'diagnose the install: toolchain, config, services, tools, egress' },
   { name: '/telegram', help: 'Telegram pairing code / connection status' },

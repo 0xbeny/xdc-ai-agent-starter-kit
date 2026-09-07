@@ -21,7 +21,11 @@ describe('parseSlash', () => {
       url: 'https://x.y/s',
       category: 'ops',
     })
-    expect(parseSlash('/cron')).toEqual({ kind: 'routines' })
+    expect(parseSlash('/cron')).toEqual({ kind: 'routines', args: [] })
+    expect(parseSlash('/routines pause abc1')).toEqual({
+      kind: 'routines',
+      args: ['pause', 'abc1'],
+    })
     expect(parseSlash('/ui')).toEqual({ kind: 'dashboard', args: [] })
     expect(parseSlash('/dashboard --logs')).toEqual({ kind: 'dashboard', args: ['--logs'] })
     expect(parseSlash('/upgrade')).toEqual({ kind: 'update' })

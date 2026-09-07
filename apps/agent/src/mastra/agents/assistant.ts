@@ -6,7 +6,7 @@ import { describeModel, resolveModel } from '@xdc-ai/models'
 import { createMemoryTool, createSkillTools, listSkills, loadWorkspace } from '@xdc-ai/workspace'
 
 import { createGrantTools } from '../grants.ts'
-import { createImproveTools } from '../improve.ts'
+import { createImproveTools, type ScheduleEngine } from '../improve.ts'
 import { getKit } from '../kit.ts'
 import { kitFacts } from '../kit-facts.ts'
 import { fetchTools, sandbox } from '../shared-tools.ts'
@@ -51,6 +51,13 @@ export const assistant = new Agent({
         approvals: kit.approvals,
         agentPort: Number(config.env.AGENT_PORT ?? 4111),
         ...(config.env.KIT_API_TOKEN ? { apiToken: config.env.KIT_API_TOKEN } : {}),
+        // In-process engine: routines work even when the HTTP service is down (CLI chat included).
+        getSchedules: async (): Promise<ScheduleEngine> => {
+          const mod = (await import('../index.ts')) as unknown as {
+            mastra: { schedules: unknown }
+          }
+          return mod.mastra.schedules as ScheduleEngine
+        },
       }),
       ...(sandbox
         ? createGrantTools({
