@@ -1,9 +1,12 @@
 import { execSync, spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import pc from 'picocolors'
 
+import { mergeEnv, parseEnv } from './env-file.ts'
+import { tailnetHttpUrl, tailnetSelf, tailscaleServe, tailscaleServing } from './tailnet.ts'
 import {
   ensureServiceRunning,
   lastDistinctError,
@@ -106,9 +109,20 @@ export async function openDashboard(
       `Dashboard did not come up on ${url}. Try:  xdc-agent dashboard --logs   or   xdc-agent dashboard --foreground\nRecent log:\n${readErrTail(root, 15) || readLogTail(root, 25)}`,
     )
   }
+  const remote = !isLoopbackHost(process.env.DASHBOARD_HOST)
+  const ts = tailnetSelf()
+  const tsUrl = ts ? tailnetHttpUrl(ts, port) : undefined
   say(
-    `Dashboard: ${pc.bold(url)}${!isLoopbackHost(process.env.DASHBOARD_HOST) ? ` · from other machines: ${pc.bold(lanUrl(port))}` : ''}`,
+    `Dashboard: ${pc.bold(url)}${remote ? ` · from other machines: ${pc.bold(lanUrl(port))}` : ''}${remote && tsUrl ? ` · tailnet: ${pc.bold(tsUrl)}` : ''}`,
   )
+  if (ts && tailscaleServing() && ts.dnsName)
+    say(`Tailscale serve is on: ${pc.bold(`https://${ts.dnsName}`)}`)
+  else if (ts && !remote)
+    say(
+      pc.dim(
+        `Tailscale detected — \`xdc-agent dashboard --tailnet\` shares it over your tailnet (HTTPS, keeps the local-only bind)`,
+      ),
+    )
   if (process.env.DASHBOARD_PASSWORD) say('Password: the DASHBOARD_PASSWORD you set in setup')
   else
     say(
@@ -129,12 +143,13 @@ export interface DashboardArgs {
   port?: number
   host?: string
   noOpen: boolean
+  tailnet: boolean
   error?: string
 }
 
-/** `xdc-agent dashboard [--status|--logs|--foreground|--restart|--stop] [--port N] [--no-open]` */
+/** `xdc-agent dashboard [--status|--logs|--foreground|--restart|--stop] [--port N] [--host A] [--tailnet] [--no-open]` */
 export function parseDashboardArgs(argv: string[]): DashboardArgs {
-  const out: DashboardArgs = { action: 'open', noOpen: false }
+  const out: DashboardArgs = { action: 'open', noOpen: false, tailnet: false }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] as string
     switch (a) {
@@ -162,6 +177,9 @@ export function parseDashboardArgs(argv: string[]): DashboardArgs {
         break
       case '--no-open':
         out.noOpen = true
+        break
+      case '--tailnet':
+        out.tailnet = true
         break
       case '--host': {
         const h = argv[++i]
@@ -191,8 +209,37 @@ export const DASHBOARD_HELP = `xdc-agent dashboard [flags]
   --foreground   run scripts/serve.sh in this terminal to watch it start (Ctrl+C stops it)
   --restart      restart the service (launchd) or start a fresh background instance
   --stop         stop the service / background instance
-  --host <a>     bind address: 127.0.0.1 local-only (default) · 0.0.0.0 LAN (requires DASHBOARD_PASSWORD)
+  --host <a>     bind address, saved to .env: 127.0.0.1 local-only (default) · 0.0.0.0 LAN/tailnet
+                 (a DASHBOARD_PASSWORD is generated and saved when going non-local without one)
+  --tailnet      share over Tailscale with \`tailscale serve\` — HTTPS, tailnet-only, keeps the local bind
   --port <n>     dashboard port (default 3000)   --no-open  never launch a browser`
+
+/**
+ * The .env changes that `--host` and the bind-decides auth gate require: persist the host so the
+ * launchd/systemd service (which reads .env, not our process env) actually rebinds, and generate a
+ * password the first time the bind goes non-loopback so the gate locks instead of refusing.
+ */
+export function planHostEnvUpdates(input: {
+  argHost?: string
+  fileEnv: Record<string, string>
+  processEnv: Record<string, string | undefined>
+  generate?: () => string
+}): { updates: Record<string, string>; generatedPassword?: string } {
+  const { argHost, fileEnv, processEnv } = input
+  const updates: Record<string, string> = {}
+  if (argHost && fileEnv.DASHBOARD_HOST !== argHost) updates.DASHBOARD_HOST = argHost
+  const targetHost = argHost ?? fileEnv.DASHBOARD_HOST ?? processEnv.DASHBOARD_HOST
+  if (
+    !isLoopbackHost(targetHost) &&
+    !fileEnv.DASHBOARD_PASSWORD &&
+    !processEnv.DASHBOARD_PASSWORD
+  ) {
+    const generatedPassword = (input.generate ?? (() => randomBytes(16).toString('base64url')))()
+    updates.DASHBOARD_PASSWORD = generatedPassword
+    return { updates, generatedPassword }
+  }
+  return { updates }
+}
 
 function ourPids(root: string): number[] {
   const pids: number[] = []
@@ -221,6 +268,21 @@ function ourPids(root: string): number[] {
   return pids
 }
 
+function restartService(root: string): void {
+  if (launchdLoaded()) {
+    restartLaunchd()
+    return
+  }
+  for (const pid of ourPids(root)) {
+    try {
+      process.kill(pid, 'SIGTERM')
+    } catch {
+      /* gone */
+    }
+  }
+  ensureServiceRunning(root)
+}
+
 export async function runDashboardCommand(
   root: string,
   argv: string[],
@@ -230,6 +292,35 @@ export async function runDashboardCommand(
   if (args.host) process.env.DASHBOARD_HOST = args.host
   const port = args.port ?? Number(process.env.DASHBOARD_PORT ?? 3000)
   const url = `http://localhost:${port}`
+  if (args.action === 'open' || args.action === 'restart' || args.action === 'foreground') {
+    const envFile = join(root, '.env')
+    const envText = existsSync(envFile) ? readFileSync(envFile, 'utf8') : ''
+    const fileEnv = parseEnv(envText)
+    if (!process.env.DASHBOARD_HOST && fileEnv.DASHBOARD_HOST)
+      process.env.DASHBOARD_HOST = fileEnv.DASHBOARD_HOST
+    if (!process.env.DASHBOARD_PASSWORD && fileEnv.DASHBOARD_PASSWORD)
+      process.env.DASHBOARD_PASSWORD = fileEnv.DASHBOARD_PASSWORD
+    const { updates, generatedPassword } = planHostEnvUpdates({
+      ...(args.host ? { argHost: args.host } : {}),
+      fileEnv,
+      processEnv: process.env,
+    })
+    if (Object.keys(updates).length > 0) {
+      writeFileSync(envFile, mergeEnv(envText, updates))
+      if (updates.DASHBOARD_HOST)
+        say(`Saved DASHBOARD_HOST=${updates.DASHBOARD_HOST} to .env — the service binds from there`)
+      if (generatedPassword) {
+        process.env.DASHBOARD_PASSWORD = generatedPassword
+        say(
+          `Non-local bind needs a password — generated one and saved it to .env: ${pc.bold(generatedPassword)}`,
+        )
+      }
+      if (args.action !== 'foreground' && (launchdLoaded() || ourPids(root).length > 0)) {
+        say('Restarting the service to apply it…')
+        restartService(root)
+      }
+    }
+  }
   if (args.action === 'help') {
     if (args.error) console.error(pc.red(args.error))
     console.log(DASHBOARD_HELP)
@@ -240,10 +331,12 @@ export async function runDashboardCommand(
     const dash = await waitForHttp(`${url}/login`, 2000)
     const agent = await waitForHttp('http://localhost:4111/api', 2000)
     const st = launchdState()
+    const ts = tailnetSelf()
     console.log(
       [
         `  dashboard   ${dash ? pc.green(`up on ${url} · ${lanUrl(port)}`) : pc.red(`not answering on ${url}`)}`,
         `  agent api   ${agent ? pc.green('up on :4111') : pc.red('not answering on :4111')}`,
+        `  tailscale   ${ts ? (tailscaleServing() && ts.dnsName ? pc.green(`serving https://${ts.dnsName}`) : pc.dim(`connected (${ts.dnsName ?? ts.ip ?? '?'}) — not serving; --tailnet to share`)) : pc.dim('not detected')}`,
         `  launchd     ${launchdLoaded() ? (st?.running ? pc.green(`running (pid ${st.pid})`) : pc.red(`NOT RUNNING — ${st?.runs ?? '?'} starts, last exit ${st?.lastExit ?? '?'}${lastDistinctError(root) ? ` · ${lastDistinctError(root).slice(0, 120)}` : ''}`)) : pc.dim('not installed')}`,
         `  processes   ${ourPids(root).length} of ours`,
         `  logs        ${join(root, 'data', 'service.out.log')}`,
@@ -299,21 +392,30 @@ export async function runDashboardCommand(
     return
   }
   if (args.action === 'restart') {
-    if (launchdLoaded()) {
-      restartLaunchd()
-      say('Restarted the login service')
-    } else {
-      for (const pid of ourPids(root)) {
-        try {
-          process.kill(pid, 'SIGTERM')
-        } catch {
-          /* gone */
-        }
-      }
-      ensureServiceRunning(root)
-      say('Started a fresh background instance')
-    }
+    restartService(root)
+    say(launchdLoaded() ? 'Restarted the login service' : 'Started a fresh background instance')
   }
   if (args.noOpen) process.env.SSH_CONNECTION = process.env.SSH_CONNECTION ?? 'no-open'
   await openDashboard(root, port, opts)
+  if (args.tailnet) {
+    try {
+      const tsUrl = tailscaleServe(port)
+      if (tsUrl)
+        say(
+          `Shared over your tailnet: ${pc.bold(tsUrl)}  (tailscale serve → 127.0.0.1:${port}; \`tailscale serve reset\` undoes it)`,
+        )
+      else
+        say(
+          pc.yellow(
+            'Tailscale is not running or not logged in — start Tailscale, then retry --tailnet',
+          ),
+        )
+    } catch (e) {
+      say(
+        pc.yellow(
+          `tailscale serve failed: ${String((e as Error).message ?? e).split('\n')[0]} — you may need to be the tailnet operator (\`tailscale set --operator=$USER\`)`,
+        ),
+      )
+    }
+  }
 }
