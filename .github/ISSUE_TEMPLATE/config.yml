@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/0xbeny/xdc-ai-agent-starter-kit/security/advisories/new
+    about: Report security issues privately — never in a public issue.
+  - name: xdcai.tech platform issues
+    url: https://xdcai.tech
+    about: Problems with the xdcai.tech wallet/marketplace service itself (not this kit).
