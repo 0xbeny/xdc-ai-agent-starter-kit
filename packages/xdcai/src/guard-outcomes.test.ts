@@ -65,6 +65,10 @@ describe('payment outcome is independent of delivery outcome', () => {
     expect(again.ok).toBe(false)
     expect(again.error).toMatch(/unresolved/i)
     expect(again.error).not.toMatch(/already paid/i)
+    expect(again.error).toMatch(/operator/)
+    expect(again.error).toMatch(/verification alone does not clear/)
+    if ('txHash' in result) expect(again.error).toMatch(/verify_transaction/)
+    else expect(again.error).not.toMatch(/verify_transaction/)
     expect(run).toHaveBeenCalledTimes(1)
   })
 
@@ -115,6 +119,21 @@ describe('payment outcome is independent of delivery outcome', () => {
       run,
     )
     expect(again.ok).toBe(false)
+    expect(executions).toBe(1)
+
+    // The UTC-day budget rolls over; the duplicate-request guard has no time filter.
+    const nextDay = new PaymentPolicy(
+      config,
+      new JsonlLedger(path),
+      () => new Date('2026-09-30T10:00:00Z'),
+    )
+    expect(await nextDay.spentToday()).toBe(0n)
+    expect((await nextDay.priorPayment(key))?.status).toBe('pending')
+    const nextDayRetry = await guard('call', { policy: nextDay, catalog: () => catalog }).execute(
+      { url: URL },
+      run,
+    )
+    expect(nextDayRetry.error).toMatch(/unresolved/)
     expect(executions).toBe(1)
 
     const pending = await reopened.priorPayment(key)

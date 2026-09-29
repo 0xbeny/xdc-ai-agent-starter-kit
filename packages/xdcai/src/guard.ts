@@ -180,7 +180,7 @@ export function guard(toolName: string, deps: GuardDeps): Guarded {
             decision,
             error:
               prior.status === 'pending'
-                ? `This exact request has an unresolved payment from ${prior.at}${prior.txHash ? ` (tx ${prior.txHash})` : ''}. Reconcile its outcome before retrying; the payment reservation is still active.`
+                ? `This exact request has an unresolved payment from ${prior.at}${prior.txHash ? ` (tx ${prior.txHash}). Use verify_transaction to inspect it, then ask an operator to reconcile the ledger` : '. Ask an operator to establish the payment outcome and reconcile the ledger'}. This request has no automatic retry expiry; verification alone does not clear the ledger entry.`
                 : `This exact request was already paid at ${prior.at}${prior.txHash ? ` (tx ${prior.txHash})` : ''}. Verify it with verify_transaction before attempting another payment.`,
           }
         }
