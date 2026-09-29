@@ -131,11 +131,11 @@ describe('guard(call)', () => {
     expect(other.ok).toBe(true)
   })
 
-  it('records provider failures as failed so a retry is allowed after verification', async () => {
+  it('allows a retry when the provider explicitly reports no payment', async () => {
     const { deps, policy } = setup()
     const g = guard('call', deps)
     const out = await g.execute({ url: GAS }, async () => ({
-      content: [{ type: 'text', text: '{"ok":false,"status":502}' }],
+      content: [{ type: 'text', text: '{"ok":false,"status":502,"paid":"0"}' }],
     }))
     expect(out.ok).toBe(false)
     expect(out.entry?.status).toBe('failed')
@@ -158,13 +158,13 @@ describe('guard(call)', () => {
     expect(out.error).toMatch(/daily cap/)
   })
 
-  it('marks thrown errors as failed', async () => {
+  it('keeps thrown errors pending until the payment outcome is reconciled', async () => {
     const { deps } = setup()
     const out = await guard('call', deps).execute({ url: GAS }, async () => {
       throw new Error('network down')
     })
     expect(out.ok).toBe(false)
-    expect(out.entry?.status).toBe('failed')
+    expect(out.entry?.status).toBe('pending')
     expect(out.error).toBe('network down')
   })
 })

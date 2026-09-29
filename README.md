@@ -60,6 +60,8 @@ it, every transfer and every DeFi action pauses for human approval; anything abo
 the `PAY_DAILY_CAP_USDC` is refused; a repeat of an already-paid request is refused with the earlier tx hash.
 An append-only ledger (`data/ledger.jsonl`) records every attempt. XDC mainnet only — there is no test mode.
 
+A delivery error does not establish that payment failed. Reported payments remain in the ledger even when the provider returns an error. A thrown exception or an error with no definitive payment result remains `pending`, retaining the quoted amount against the daily cap and blocking an identical paid call. A failed response releases that reservation only when it explicitly reports `paid: "0"` without a transaction hash. Other unresolved outcomes need operator reconciliation; this guard does not automatically verify or clear them.
+
 ### Skills, sandbox, routines, delegation
 
 58 bundled skills (vendored from Hermes Agent, MIT: docx, pdf, xlsx, powerpoint, research, devops, …), a
