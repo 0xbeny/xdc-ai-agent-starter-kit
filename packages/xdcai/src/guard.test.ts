@@ -131,11 +131,11 @@ describe('guard(call)', () => {
     expect(other.ok).toBe(true)
   })
 
-  it('allows a retry when the provider explicitly reports no payment', async () => {
+  it('records provider failures as failed so a retry is allowed after verification', async () => {
     const { deps, policy } = setup()
     const g = guard('call', deps)
     const out = await g.execute({ url: GAS }, async () => ({
-      content: [{ type: 'text', text: '{"ok":false,"status":502,"paid":"0"}' }],
+      content: [{ type: 'text', text: '{"ok":false,"status":502}' }],
     }))
     expect(out.ok).toBe(false)
     expect(out.entry?.status).toBe('failed')
@@ -158,13 +158,29 @@ describe('guard(call)', () => {
     expect(out.error).toMatch(/daily cap/)
   })
 
-  it('keeps thrown errors pending until the payment outcome is reconciled', async () => {
+  it('keeps a reported payment when delivery fails, so it is not paid twice', async () => {
+    const { deps, policy } = setup()
+    const g = guard('call', deps)
+    const run = async () => ({
+      content: [{ type: 'text', text: '{"ok":false,"status":502,"paid":"0.01","txHash":"0xabc"}' }],
+    })
+    const out = await g.execute({ url: GAS }, run)
+    expect(out.ok).toBe(false)
+    expect(out.entry?.status).toBe('settled')
+    expect(out.entry?.txHash).toBe('0xabc')
+    expect(await policy.spentToday()).toBeGreaterThan(0n)
+    const again = await g.execute({ url: GAS }, run)
+    expect(again.ok).toBe(false)
+    expect(again.error).toMatch(/already paid/)
+  })
+
+  it('marks thrown errors as failed', async () => {
     const { deps } = setup()
     const out = await guard('call', deps).execute({ url: GAS }, async () => {
       throw new Error('network down')
     })
     expect(out.ok).toBe(false)
-    expect(out.entry?.status).toBe('pending')
+    expect(out.entry?.status).toBe('failed')
     expect(out.error).toBe('network down')
   })
 })

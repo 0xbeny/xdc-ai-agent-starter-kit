@@ -178,10 +178,7 @@ export function guard(toolName: string, deps: GuardDeps): Guarded {
           return {
             ok: false,
             decision,
-            error:
-              prior.status === 'pending'
-                ? `This exact request has an unresolved payment from ${prior.at}${prior.txHash ? ` (tx ${prior.txHash}). Use verify_transaction to inspect it, then ask an operator to reconcile the ledger` : '. Ask an operator to establish the payment outcome and reconcile the ledger'}. This request has no automatic retry expiry; verification alone does not clear the ledger entry.`
-                : `This exact request was already paid at ${prior.at}${prior.txHash ? ` (tx ${prior.txHash})` : ''}. Verify it with verify_transaction before attempting another payment.`,
+            error: `This exact request was already paid at ${prior.at}${prior.txHash ? ` (tx ${prior.txHash})` : ''}. Verify it with verify_transaction instead of paying again; change the request if you really need a fresh call.`,
           }
         }
       }
@@ -202,32 +199,26 @@ export function guard(toolName: string, deps: GuardDeps): Guarded {
         const result = await run(input)
         const facts = extractPaymentFacts(result)
         const failed = facts.ok === false || (facts.status !== undefined && facts.status >= 400)
-        // Delivery can fail after payment. Only an explicit unpaid result releases the reservation.
-        let status: LedgerEntry['status'] = 'settled'
-        if (failed && !(facts.paid !== undefined && facts.paid > 0n)) {
-          status = facts.paid === 0n && !facts.txHash ? 'failed' : 'pending'
-        }
-        const recordedAmount = status === 'pending' ? amount : (facts.paid ?? amount)
-        let note = `paid ${formatUsdc(recordedAmount)} USDC`
-        if (failed) {
-          if (status === 'settled') note = `provider returned an error after reporting ${note}`
-          else if (status === 'failed') note = 'provider returned an error and reported no payment'
-          else note = 'provider returned an error; payment outcome unresolved, reservation retained'
-        }
+        // Delivery can fail after payment: a reported payment stays recorded, so the
+        // same request is not paid again automatically.
+        const paidAnyway = facts.paid !== undefined && facts.paid > 0n
         const entry = await deps.policy.record({
           ...pending,
-          amount: recordedAmount,
-          status,
+          amount: facts.paid ?? amount,
+          status: failed && !paidAnyway ? 'failed' : 'settled',
           ...(facts.txHash ? { txHash: facts.txHash } : {}),
-          note,
+          note: failed
+            ? paidAnyway
+              ? `provider returned an error after reporting payment of ${formatUsdc(facts.paid ?? amount)} USDC`
+              : 'provider returned an error'
+            : `paid ${formatUsdc(facts.paid ?? amount)} USDC`,
         })
         return { ok: !failed, result, decision, entry }
       } catch (error) {
         const entry = await deps.policy.record({
           ...pending,
-          // A lost response does not establish that the remote action did not execute.
-          status: 'pending',
-          note: `payment outcome unresolved: ${error instanceof Error ? error.message : String(error)}`,
+          status: 'failed',
+          note: error instanceof Error ? error.message : String(error),
         })
         return {
           ok: false,

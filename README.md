@@ -60,10 +60,6 @@ it, every transfer and every DeFi action pauses for human approval; anything abo
 the `PAY_DAILY_CAP_USDC` is refused; a repeat of an already-paid request is refused with the earlier tx hash.
 An append-only ledger (`data/ledger.jsonl`) records every attempt. XDC mainnet only — there is no test mode.
 
-A delivery error does not establish that payment failed. Reported payments remain in the ledger even when the provider returns an error. A thrown exception or an error with no definitive payment result remains `pending`, retaining the quoted amount against the daily cap and blocking an identical paid call. A failed response releases that reservation only when it explicitly reports `paid: "0"` without a transaction hash. Other unresolved outcomes need operator reconciliation; this guard does not automatically verify or clear them.
-
-The duplicate guard has no expiry: the same method, URL and body remain blocked while an unresolved entry exists in the ledger, including after a restart or UTC midnight. Daily accounting is separate and only includes entries from the current UTC day; an older unresolved entry does not carry its amount into the new day's budget. When a transaction hash is available, `verify_transaction` can help inspect the transaction, but it does not update this local ledger. Without a hash, an operator must establish the outcome with the payment provider. The kit currently has no reconciliation command or tool. Recovery requires operator-reviewed code using `PaymentPolicy.record(...)` to append a status for the same entry ID, retaining the amount when paid and marking it `failed` only after establishing that no payment occurred. An unknown outcome must remain pending; elapsed time or a transaction lookup returning no result is not proof of nonpayment.
-
 ### Skills, sandbox, routines, delegation
 
 58 bundled skills (vendored from Hermes Agent, MIT: docx, pdf, xlsx, powerpoint, research, devops, …), a
