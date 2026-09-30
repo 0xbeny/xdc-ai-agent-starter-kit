@@ -199,13 +199,18 @@ export function guard(toolName: string, deps: GuardDeps): Guarded {
         const result = await run(input)
         const facts = extractPaymentFacts(result)
         const failed = facts.ok === false || (facts.status !== undefined && facts.status >= 400)
+        // Delivery can fail after payment: a reported payment stays recorded, so the
+        // same request is not paid again automatically.
+        const paidAnyway = facts.paid !== undefined && facts.paid > 0n
         const entry = await deps.policy.record({
           ...pending,
           amount: facts.paid ?? amount,
-          status: failed ? 'failed' : 'settled',
+          status: failed && !paidAnyway ? 'failed' : 'settled',
           ...(facts.txHash ? { txHash: facts.txHash } : {}),
           note: failed
-            ? 'provider returned an error'
+            ? paidAnyway
+              ? `provider returned an error after reporting payment of ${formatUsdc(facts.paid ?? amount)} USDC`
+              : 'provider returned an error'
             : `paid ${formatUsdc(facts.paid ?? amount)} USDC`,
         })
         return { ok: !failed, result, decision, entry }
